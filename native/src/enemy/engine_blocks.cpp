@@ -156,6 +156,34 @@ bool CheckForVerticalSolidBlockCollision(Game& g, uint16_t x, uint16_t lo, uint1
     return false;
 }
 
+// ---- $A0:BF8A Vertical solid block probe used by skree/metaree (unsigned distance) ----------------------------
+bool CheckForVerticalSolidBlockCollision_SkreeMetaree(Game& g, uint16_t x, bool down, uint16_t lo, uint16_t& hi) {
+    const uint16_t xp = g.Enemy_XPosition(x), xr = g.Enemy_XHitboxRadius(x), yr = g.Enemy_YHitboxRadius(x);
+    int16_t columns = int16_t((xp + xr - 1 - ((xp - xr) & 0xFFF0)) >> 4);
+    uint16_t y_target;
+    if (down) {
+        const uint32_t sum = (uint32_t(g.Enemy_YPosition(x)) << 16 | g.Enemy_YSubPosition(x)) + ((uint32_t(hi) << 16) | lo);
+        y_target = uint16_t((sum >> 16) + yr - 1);
+    } else {
+        const uint32_t diff = (uint32_t(g.Enemy_YPosition(x)) << 16 | g.Enemy_YSubPosition(x)) - ((uint32_t(hi) << 16) | lo);
+        y_target = uint16_t((diff >> 16) - yr);
+    }
+    uint32_t index = row_start(g, uint16_t(y_target >> 4), uint16_t((xp - xr) >> 4));
+    for (; columns >= 0; --columns, ++index) {
+        if (!(level_word(g, index) & 0x8000)) continue;
+        if (down) {
+            const uint16_t r1 = uint16_t((y_target & 0xFFF0) - yr);
+            const int32_t r2 = int32_t(r1) - int32_t(g.Enemy_YPosition(x)) - ((y_target & 0xFFF0) >= yr ? 0 : 1);
+            hi = int16_t(r2) >= 0 ? uint16_t(r2) : 0;
+        } else {
+            const int16_t d = int16_t(((y_target | 0xF) + 1 + yr) - g.Enemy_YPosition(x));
+            hi = uint16_t(0 - (d < 0 ? d : 0));
+        }
+        return true;
+    }
+    return false;
+}
+
 // ---- $A0:C6AD Move enemy right (horizontal, either sign) ---------------------------------------------------
 static bool MoveEnemyRight(Game& g, uint16_t x, uint16_t lo, uint16_t hi, uint16_t flags) {
     if (!lo && !hi) return false;

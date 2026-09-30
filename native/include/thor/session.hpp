@@ -53,6 +53,8 @@ public:
     void save_game(Sram& sram, unsigned slot);
     int save_station() const;
     void select_room(size_t index);
+    // Test/tool hook: place Samus (pixels) without changing room state; clears velocity.
+    void teleport(int x, int y) { state_.x = x * 65536; state_.y = y * 65536; state_.vx = state_.vy = 0; previous_ = state_; }
     // Explicit development traversal, pending original door/PLM scripts.
     // The expected source prevents a stale companion choice traversing a
     // different room's exit after another display changes the session.
@@ -70,7 +72,7 @@ public:
     const RoomGameplay& gameplay() const { return gameplay_; }
     const std::set<int>& explored() const { return explored_; }
     const Enemies& enemies() const { return enemies_; }
-    const Game& game() const { return game_; }
+    Game& game() const { return game_; }   // WRAM accessors are proxies; callers must not mutate
     const Progression& progression() const { return progression_; }
     double alpha() const { return clock_.alpha(); }
 private:

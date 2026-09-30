@@ -37,6 +37,8 @@ exactly as the M1/M2 decoders already do.
 * Sound/music queue calls (`JSL QueueSound...`) call `g.queue_sound(id)`/`g.queue_music(id)` no-op
   hooks (declared in `game.hpp` when the audio track lands).
 
+* **Pitfall:** accessors return live proxies (`Word`, `Byte`). `auto v = g.Enemy_YPosition(x);` keeps a *reference* into WRAM, not a copy; write `uint16_t v = ...`.
+
 ## Registering routines
 
 Enemy AI, PLM pre-instructions and similar indirect calls are keyed by the routine's **24-bit

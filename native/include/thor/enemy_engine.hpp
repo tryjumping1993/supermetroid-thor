@@ -97,6 +97,7 @@ bool AlignEnemyYPositionWithNonSquareSlope(Game& g, uint16_t x);   // true = adj
 // Read-only probes: true = collision; `adjusted_hi` is $14 after the call (reduced distance)
 bool CheckForHorizontalSolidBlockCollision(Game& g, uint16_t x, uint16_t lo, uint16_t& hi);
 bool CheckForVerticalSolidBlockCollision(Game& g, uint16_t x, uint16_t lo, uint16_t& hi);
+bool CheckForVerticalSolidBlockCollision_SkreeMetaree(Game& g, uint16_t x, bool down, uint16_t lo, uint16_t& hi);  // $A0:BF8A
 uint16_t CalculateAngleOfXYOffset(uint16_t dx, uint16_t dy);       // $A0:C0B1 (angle from -Y axis, 0..FF)
 uint16_t CalculateAngleOfSamusFromEnemy(Game& g, uint16_t x);
 uint16_t CalculateAngleOfSamusFromEnemyProjectile(Game& g, uint16_t projectile_x);

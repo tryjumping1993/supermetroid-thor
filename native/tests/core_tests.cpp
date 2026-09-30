@@ -1,6 +1,8 @@
 #include "thor/save_game.hpp"
 #include "thor/enemies.hpp"
 #include "thor/game.hpp"
+#include "thor/enemy_engine.hpp"
+#include "reference_labels.hpp"
 #include "thor/clock.hpp"
 #include "thor/content.hpp"
 #include "thor/session.hpp"
@@ -293,6 +295,29 @@ void wram(const std::string& path) {
     game.long_at(0x100) = 0xABCDEF;
     require(game.byte_at(0x101) == 0xCD, "long access is little-endian");
 }
+// Ported-enemy engine smoke test: Skree dive, burrow and shot kill, through the WRAM engine.
+void enemy_engine(const std::string& path) {
+    thor::Session session(thor::Rom::from_file(path));
+    size_t skree_room = 0;
+    for (size_t i = 0; i < std::size(thor::reference::rooms); ++i)
+        if (std::string(thor::reference::rooms[i].name) == "SkreeBoost") skree_room = i;
+    session.select_room(skree_room);
+    auto& game = session.game();
+    uint16_t skree = 0xFFFF;
+    for (uint16_t x = 0; x < 0x800; x += 0x40) if (game.Enemy_ID(x) == (thor::labels::EnemyHeaders_Skree & 0xFFFF)) { skree = x; break; }
+    require(skree != 0xFFFF, "Skree loads through the WRAM enemy engine");
+    require(game.Skree_function(skree) == (thor::labels::Function_Skree_Idling & 0xFFFF), "Skree init AI selects idling");
+    session.teleport(game.Enemy_XPosition(skree), game.Enemy_YPosition(skree) + 140);
+    const uint16_t start_y = game.Enemy_YPosition(skree);   // (not `auto`: accessors return live proxies)
+    uint16_t deepest = start_y; bool dived = false;
+    for (int i = 0; i < 120 && game.Enemy_ID(skree); ++i) {
+        session.step(0);
+        if (game.Enemy_ID(skree)) { deepest = std::max<uint16_t>(deepest, game.Enemy_YPosition(skree)); dived |= game.Skree_function(skree) == (thor::labels::Function_Skree_LaunchedAttack & 0xFFFF); }
+    }
+    require(dived, "Skree notices Samus and dives");
+    require(deepest > start_y + 40, "Skree falls toward Samus");
+    require(!game.Enemy_ID(skree), "Skree burrows into the floor and is removed");
+}
 void doors(const std::string& path) {
     thor::Session session(thor::Rom::from_file(path));
     const auto landing = session.room().doors;
@@ -380,6 +405,7 @@ int main(int argc, char** argv) {
         decompression(); clocks(); saves();
         if (argc > 1) {
             wram(argv[1]);
+            if (argc > 2 && std::string(argv[2]) == "--enemies") { enemy_engine(argv[1]); std::cout << "PASS: " << checks << " checks" << std::endl; return 0; }
             if (argc > 3 && std::string(argv[2]) == "--route") route(argv[1], argv[3]);
             else if (argc > 2 && std::string(argv[2]) == "--milestone2") { gameplay(argv[1]); milestone2(argv[1]); }
             else if (argc > 2 && std::string(argv[2]) == "--gameplay") gameplay(argv[1]);
