@@ -3,6 +3,8 @@ package org.supermetroid.thor
 import android.app.Activity
 import android.app.Presentation
 import android.app.ActivityOptions
+import android.content.ActivityNotFoundException
+import android.hardware.input.InputManager
 import android.content.Intent
 import android.graphics.Color
 import android.hardware.display.DisplayManager
@@ -25,7 +27,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 
-class MainActivity : Activity(), Choreographer.FrameCallback, DisplayManager.DisplayListener {
+class MainActivity : Activity(), Choreographer.FrameCallback, DisplayManager.DisplayListener, InputManager.InputDeviceListener {
     private lateinit var game: GameSurface
     private lateinit var root: FrameLayout
     private lateinit var welcome: LinearLayout
@@ -38,8 +40,74 @@ class MainActivity : Activity(), Choreographer.FrameCallback, DisplayManager.Dis
     private val handler = Handler(Looper.getMainLooper())
     private var lastReport = 0L
     private var lastFrames = 0L
-    private var keyboardButtons = 0
-    private var axisButtons = 0
+    private var callbackCount = 0L
+    lateinit var controls: ControllerInput; private set
+    private lateinit var inputs: InputManager
+    private var fallbackActivity: CompanionActivity? = null
+    internal val hasFallbackActivity get() = fallbackActivity != null
+    private var automaticInline = false
+    internal var rejectPresentationForTest = false
+    internal var denyActivityForTest = false
+    internal val companionRouter: CompanionRouter = CompanionRouter(object : CompanionRouter.Host {
+        override fun close() {
+            presentation?.setOnDismissListener(null)
+            presentation?.dismiss(); presentation = null
+            fallbackActivity?.finish(); fallbackActivity = null
+            if (automaticInline) { inlineHelper?.let { root.removeView(it) }; inlineHelper = null; automaticInline = false }
+            clearInput()
+        }
+        override fun presentation(target: CompanionRouter.Target): Boolean {
+            val screen = displays.getDisplay(target.id) ?: return false
+            try {
+                if (BuildConfig.DEBUG && rejectPresentationForTest) throw WindowManager.InvalidDisplayException("Test rejection")
+                val window = object : Presentation(this@MainActivity, screen) {
+                    override fun onCreate(state: Bundle?) {
+                        super.onCreate(state)
+                        this.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        this.window?.let { immerse(it); RefreshPolicy.request(it, display, 60) }
+                        setContentView(CompanionView(context))
+                        Log.i("ThorNative", "companion mode=presentation display=${display.displayId}")
+                    }
+                }
+                window.show(); presentation = window
+                window.setOnDismissListener {
+                    handler.post {
+                        if (presentation === window) { companionRouter.stop(); refreshDisplays() }
+                    }
+                }
+                return true
+            } catch (e: WindowManager.InvalidDisplayException) {
+                Log.w("ThorNative", "Presentation rejected on ${target.id}; trying activity", e)
+            } catch (e: SecurityException) {
+                Log.w("ThorNative", "Presentation permission denied on ${target.id}; trying activity", e)
+            }
+            return false
+        }
+        override fun activity(target: CompanionRouter.Target, generation: Long): Boolean {
+            val intent = Intent(this@MainActivity, CompanionActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                .putExtra("companionGeneration", generation)
+            try {
+                val manager = getSystemService(android.app.ActivityManager::class.java)
+                if ((BuildConfig.DEBUG && denyActivityForTest) || !manager.isActivityStartAllowedOnDisplay(this@MainActivity, target.id, intent)) return false
+                startActivity(intent, ActivityOptions.makeBasic().setLaunchDisplayId(target.id).toBundle())
+                Log.i("ThorNative", "companion mode=activity display=${target.id} generation=$generation")
+                return true
+            } catch (e: SecurityException) {
+                Log.w("ThorNative", "Companion launch denied", e)
+            } catch (e: ActivityNotFoundException) {
+                Log.w("ThorNative", "Companion activity unavailable", e)
+            } catch (e: IllegalArgumentException) {
+                Log.w("ThorNative", "Companion display disappeared during launch", e)
+            }
+            return false
+        }
+        override fun inline() {
+            if (inlineHelper == null) showInlineHelper()
+            automaticInline = true
+            Log.i("ThorNative", "companion mode=inline; secondary windows unavailable")
+        }
+    })
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,12 +136,17 @@ class MainActivity : Activity(), Choreographer.FrameCallback, DisplayManager.Dis
         setContentView(root)
         displays = getSystemService(DisplayManager::class.java)
         displays.registerDisplayListener(this, handler)
+        controls = ControllerInput(this)
+        inputs = getSystemService(InputManager::class.java)
+        inputs.registerInputDeviceListener(this, handler)
         SessionHost.initialize(applicationContext)
+        if (BuildConfig.DEBUG) intent.getIntExtra("development_hz", 0).takeIf { it == 60 || it == 120 }?.let {
+            SessionHost.renderHz = it // Transient test request; leaves the saved user preference intact.
+        }
         if (SessionHost.loaded) romLoaded()
         if (BuildConfig.DEBUG) intent.getStringExtra("development_rom")?.let {
             SessionHost.debugImport(applicationContext, it)
         }
-        showCompanion()
     }
 
     fun romLoaded() { welcome.visibility = View.GONE; game.requestRender() }
@@ -96,32 +169,33 @@ class MainActivity : Activity(), Choreographer.FrameCallback, DisplayManager.Dis
 
     override fun onStart() {
         super.onStart(); running = true; game.onResume()
-        NativeBridge.suspend(); lastReport = 0
+        NativeBridge.suspend(); lastReport = 0; callbackCount = 0
         if (!callbackInstalled) { callbackInstalled = true; Choreographer.getInstance().postFrameCallback(this) }
-        if (this::displays.isInitialized) showCompanion()
+        if (this::displays.isInitialized) refreshDisplays()
     }
     override fun onResume() {
         super.onResume(); NativeBridge.suspend()
-        if (this::displays.isInitialized) showCompanion()
+        if (this::displays.isInitialized) refreshDisplays()
     }
     override fun onPause() {
         // On Android multi-display, a visible activity may be paused while the
         // companion receives focus. Keep its surface alive until onStop.
-        keyboardButtons = 0; axisButtons = 0; SessionHost.buttons = 0
+        clearInput()
         NativeBridge.suspend()
         super.onPause()
     }
     override fun onStop() {
         running = false; callbackInstalled = false
         Choreographer.getInstance().removeFrameCallback(this)
-        keyboardButtons = 0; axisButtons = 0; SessionHost.buttons = 0
+        clearInput()
         NativeBridge.suspend(); game.onPause()
-        presentation?.dismiss(); presentation = null
+        companionRouter.stop()
         super.onStop()
     }
     override fun onDestroy() {
         displays.unregisterDisplayListener(this)
-        presentation?.dismiss()
+        inputs.unregisterInputDeviceListener(this)
+        companionRouter.stop()
         if (SessionHost.mainActivity === this) SessionHost.mainActivity = null
         super.onDestroy()
     }
@@ -129,18 +203,20 @@ class MainActivity : Activity(), Choreographer.FrameCallback, DisplayManager.Dis
         callbackInstalled = false
         if (!running) return
         if (SessionHost.resumeRequested) { NativeBridge.suspend(); SessionHost.resumeRequested = false }
-        if (!SessionHost.busy) NativeBridge.advance(frameTimeNanos, keyboardButtons or axisButtons or SessionHost.buttons)
+        if (!SessionHost.busy) NativeBridge.advance(frameTimeNanos, controls.state.buttons or SessionHost.buttons)
         else NativeBridge.suspend()
         game.requestRender()
         if (lastReport == 0L) { lastReport = frameTimeNanos; lastFrames = game.frames.get() }
+        else callbackCount++
         if (frameTimeNanos - lastReport >= 1_000_000_000L) {
             val count = game.frames.get()
             val fps = (count - lastFrames) * 1_000_000_000.0 / (frameTimeNanos - lastReport)
             val state = SessionHost.state()
             status.text = if (SessionHost.loaded) "${state.optString("room").replace('_', ' ')} · %.1f render fps · tick %d\nDevelopment slice · collision / room scripts incomplete".format(fps, state.optLong("tick"))
             else SessionHost.loadingMessage
-            Log.i("ThorNative", "framesPerSecond=$fps tick=${state.optLong("tick")} displayHz=${display?.refreshRate} longestDrawMs=${game.longestDrawNs.getAndSet(0) / 1e6} x=${state.optDouble("x")} y=${state.optDouble("y")} paused=${state.optBoolean("paused")}")
-            lastReport = frameTimeNanos; lastFrames = count
+            val callbackHz = callbackCount * 1_000_000_000.0 / (frameTimeNanos - lastReport)
+            Log.i("ThorNative", "framesPerSecond=$fps callbackHz=$callbackHz requestedHz=${SessionHost.renderHz} tick=${state.optLong("tick")} displayHz=${display?.refreshRate} longestDrawMs=${game.longestDrawNs.getAndSet(0) / 1e6} x=${state.optDouble("x")} y=${state.optDouble("y")} paused=${state.optBoolean("paused")}")
+            lastReport = frameTimeNanos; lastFrames = count; callbackCount = 0
         }
         callbackInstalled = true; Choreographer.getInstance().postFrameCallback(this)
     }
@@ -149,66 +225,43 @@ class MainActivity : Activity(), Choreographer.FrameCallback, DisplayManager.Dis
         inlineHelper?.let { root.removeView(it); inlineHelper = null; return }
         inlineHelper = CompanionView(this).also { root.addView(it, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * .55f).toInt(), -1, Gravity.END)) }
     }
-    private fun showCompanion() {
-        val candidates = displays.displays.filter { it.displayId != display?.displayId }
+    fun refreshDisplays() {
+        if (!running) return
+        RefreshPolicy.request(window, display, SessionHost.renderHz)
+        game.requestRefresh(SessionHost.renderHz)
+        presentation?.window?.let { RefreshPolicy.request(it, presentation?.display, 60) }
+        fallbackActivity?.let { RefreshPolicy.request(it.window, it.display, 60) }
         val preferred = getSharedPreferences("thor", 0).getString("helperDisplay", null)
-        val target = candidates.firstOrNull { displayKey(it) == preferred } ?: candidates.firstOrNull() ?: return
-        if (presentation?.display?.displayId == target.displayId && presentation?.isShowing == true) return
-        presentation?.dismiss()
-        try {
-            presentation = object : Presentation(this, target) {
-                override fun onCreate(state: Bundle?) {
-                    super.onCreate(state)
-                    window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    window?.let { immerse(it) }
-                    setContentView(CompanionView(context))
-                    Log.i("ThorNative", "Companion presentation on display ${display.displayId} ${display.mode}")
-                }
-            }.also { it.show() }
-        } catch (e: WindowManager.InvalidDisplayException) {
-            Log.w("ThorNative", "Presentation unavailable; launching companion activity", e)
-            presentation = null
-            val intent = Intent(this, CompanionActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-            val manager = getSystemService(android.app.ActivityManager::class.java)
-            if (manager.isActivityStartAllowedOnDisplay(this, target.displayId, intent)) {
-                startActivity(intent, ActivityOptions.makeBasic().setLaunchDisplayId(target.displayId).toBundle())
-            }
+        companionRouter.reconcile(true, display?.displayId,
+            displays.displays.filter { it.isValid }.map { CompanionRouter.Target(it.displayId, displayKey(it)) }, preferred)
+    }
+    internal fun attachCompanion(activity: CompanionActivity, generation: Long): Boolean {
+        if (!running || !companionRouter.acceptsActivity(activity.display?.displayId ?: -1, generation)) return false
+        fallbackActivity?.takeIf { it !== activity }?.finish()
+        fallbackActivity = activity
+        return true
+    }
+    internal fun detachCompanion(activity: CompanionActivity) {
+        if (fallbackActivity === activity) {
+            fallbackActivity = null
+            companionRouter.activityUnavailable(companionRouter.generation)
         }
     }
-    override fun onDisplayAdded(id: Int) { if (running) showCompanion() }
-    override fun onDisplayRemoved(id: Int) {
-        if (presentation?.display?.displayId == id) { presentation?.dismiss(); presentation = null }
-        if (running) showCompanion()
+    internal fun companionUnavailable(generation: Long) { companionRouter.activityUnavailable(generation) }
+    private fun clearInput() {
+        if (this::controls.isInitialized) controls.state.clear()
+        SessionHost.buttons = 0
     }
-    override fun onDisplayChanged(id: Int) { if (running) showCompanion() }
-
-    private fun button(key: Int): Int = when (key) {
-        KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_A -> 0x200
-        KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_D -> 0x100
-        KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_W -> 0x800
-        KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_S -> 0x400
-        KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_SPACE -> 0x8000
-        else -> 0
-    }
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_BUTTON_START && event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) { NativeBridge.pause(); return true }
-        val bit = button(event.keyCode)
-        if (bit != 0) {
-            keyboardButtons = if (event.action == KeyEvent.ACTION_UP) keyboardButtons and bit.inv() else keyboardButtons or bit
-            return true
-        }
-        return super.dispatchKeyEvent(event)
-    }
-    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
-        if ((event.source and android.view.InputDevice.SOURCE_JOYSTICK) == android.view.InputDevice.SOURCE_JOYSTICK) {
-            val x = event.getAxisValue(MotionEvent.AXIS_X) + event.getAxisValue(MotionEvent.AXIS_HAT_X)
-            val y = event.getAxisValue(MotionEvent.AXIS_Y) + event.getAxisValue(MotionEvent.AXIS_HAT_Y)
-            axisButtons = (if (x < -.25f) 0x200 else if (x > .25f) 0x100 else 0) or
-                (if (y < -.25f) 0x800 else if (y > .25f) 0x400 else 0)
-            return true
-        }
-        return super.onGenericMotionEvent(event)
-    }
+    override fun onDisplayAdded(id: Int) { refreshDisplays() }
+    override fun onDisplayRemoved(id: Int) { refreshDisplays() }
+    override fun onDisplayChanged(id: Int) { refreshDisplays() }
+    override fun onInputDeviceAdded(id: Int) { controls.state.remove(id) }
+    override fun onInputDeviceRemoved(id: Int) { controls.state.remove(id) }
+    override fun onInputDeviceChanged(id: Int) { controls.state.remove(id) }
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        controls.key(event) { NativeBridge.pause() } || super.dispatchKeyEvent(event)
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean =
+        controls.motion(event) || super.onGenericMotionEvent(event)
     companion object {
         fun displayKey(display: Display) = "${display.name}/${display.mode.physicalWidth}x${display.mode.physicalHeight}"
         fun immerse(window: Window) {

@@ -20,6 +20,7 @@ object SessionHost {
     @Volatile var loaded = false
     @Volatile var busy = false
     @Volatile var loadingMessage = "Import your original NTSC ROM to begin."
+    var renderHz = 120
     var wide = true
     var interpolate = true
     var spoilers = false
@@ -29,10 +30,12 @@ object SessionHost {
 
     fun initialize(context: Context) {
         val prefs = context.getSharedPreferences("thor", 0)
+        renderHz = if (prefs.getInt("renderHz", 120) == 60) 60 else 120
         wide = prefs.getBoolean("wide", true)
         interpolate = prefs.getBoolean("interpolate", true)
         spoilers = prefs.getBoolean("spoilers", false)
         NativeBridge.options(wide, interpolate)
+        NativeBridge.selectSlot(prefs.getInt("saveSlot", 0).coerceIn(0, 2))
         if (!loaded && !busy) {
             val cached = File(context.filesDir, "content/ntsc.sfc")
             if (cached.exists()) load(context) { cached.readBytes() }
@@ -42,7 +45,8 @@ object SessionHost {
     fun saveOptions(context: Context) {
         NativeBridge.options(wide, interpolate)
         context.getSharedPreferences("thor", 0).edit().putBoolean("wide", wide)
-            .putBoolean("interpolate", interpolate).putBoolean("spoilers", spoilers).apply()
+            .putBoolean("interpolate", interpolate).putBoolean("spoilers", spoilers).putInt("renderHz", renderHz).apply()
+        mainActivity?.refreshDisplays()
     }
 
     fun importRom(context: Context, uri: Uri) = load(context) {
@@ -76,7 +80,7 @@ object SessionHost {
                 NativeBridge.loadRom(bytes)
                 val saved = File(context.filesDir, "saves/imported.srm")
                 if (saved.exists()) runCatching { NativeBridge.importSram(saved.readBytes()) }
-                loaded = true; loadingMessage = "Native movement slice ready."
+                loaded = true; loadingMessage = "Native connected-room slice ready."
                 main.post { mainActivity?.romLoaded() }
             } catch (e: Exception) {
                 loadingMessage = e.message ?: "ROM import failed"
@@ -102,7 +106,7 @@ object SessionHost {
                 NativeBridge.importSram(bytes)
                 val file = File(context.filesDir, "saves/imported.srm"); file.parentFile!!.mkdirs()
                 atomicWrite(file, bytes)
-                main.post { Toast.makeText(context, "SRAM imported for inspection. Gameplay restoration is pending.", Toast.LENGTH_LONG).show() }
+                main.post { Toast.makeText(context, "SRAM imported. Select a slot and tap Load game to continue.", Toast.LENGTH_LONG).show() }
             } catch (e: Exception) { main.post { Toast.makeText(context, e.message, Toast.LENGTH_LONG).show() } }
         }
     }
@@ -117,11 +121,31 @@ object SessionHost {
         }
     }
 
+    fun game(context: Context, action: String) {
+        if (busy || !loaded) return
+        busy = true; buttons = 0
+        worker.execute {
+            try {
+                when (action) {
+                    "new" -> NativeBridge.newGame()
+                    "load" -> NativeBridge.loadGame()
+                    "save" -> {
+                        NativeBridge.saveGame()
+                        val file = File(context.filesDir, "saves/imported.srm"); file.parentFile!!.mkdirs()
+                        atomicWrite(file, NativeBridge.exportSram())
+                    }
+                }
+                main.post { Toast.makeText(context, when (action) { "save" -> "Game saved"; "load" -> "Game loaded"; else -> "New game" }, Toast.LENGTH_SHORT).show() }
+            } catch (e: Exception) { main.post { Toast.makeText(context, e.message, Toast.LENGTH_LONG).show() } }
+            finally { busy = false }
+        }
+    }
+
     fun exportSram(context: Context, uri: Uri) {
         worker.execute {
             try {
                 val data = NativeBridge.exportSram()
-                require(data.size == 8192) { "Import an SRAM file first." }
+                require(data.size == 8192) { "Load a ROM first." }
                 context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(data) } ?: error("Cannot write SRAM")
             } catch (e: Exception) { main.post { Toast.makeText(context, e.message, Toast.LENGTH_LONG).show() } }
         }

@@ -36,9 +36,15 @@ class CompanionView(context: Context) : LinearLayout(context) {
             map.state = state; map.invalidate()
             pauseButton.text = if (state.optBoolean("paused")) "Resume" else "Pause"
             val sram = state.optJSONObject("sram")
-            inventory.text = if (sram == null) "Import an SRAM file to inspect your original inventory.\n\nGameplay save restoration and equipment controls are pending."
-                else if (!sram.optBoolean("valid")) "Slot ${sram.optInt("slot") + 1}: empty or invalid checksum."
-                else "Imported SRAM · slot ${sram.optInt("slot") + 1}\n\nEnergy  ${sram.optInt("health")} / ${sram.optInt("maxHealth")}\nMissiles  ${sram.optInt("missiles")} / ${sram.optInt("maxMissiles")}\nSuper missiles  ${sram.optInt("supers")}\nPower bombs  ${sram.optInt("powerBombs")}\nReserve energy  ${sram.optInt("reserve")}\nCollected items  0x${sram.optInt("items").toString(16)}\nCollected beams  0x${sram.optInt("beams").toString(16)}\n\nInspection only · does not restore the movement slice."
+            val items = state.optInt("items")
+            inventory.text = "Energy  ${state.optInt("health")} / ${state.optInt("maxHealth")}\n" +
+                "Missiles  ${state.optInt("missiles")} / ${state.optInt("maxMissiles")}  ·  ${if (state.optBoolean("selectedMissiles")) "selected" else "Power Beam"}\n" +
+                "Morph Ball  ${if (items and 4 != 0) "acquired" else "not acquired"}\n" +
+                "Bombs  ${if (items and 0x1000 != 0) "acquired" else "not acquired"}\n\n" +
+                (if (state.optBoolean("dead")) "Samus has fallen. Load a saved game or start a new game.\n\n" else "") +
+                (if (state.optBoolean("saveAvailable")) "Save available here.\n\n" else "Save at the ship or a save station.\n\n") +
+                (if (sram?.optBoolean("valid") == true) "Slot ${sram.optInt("slot") + 1}: saved energy ${sram.optInt("health")}, missiles ${sram.optInt("missiles")}"
+                    else "Slot ${(sram?.optInt("slot") ?: 0) + 1}: empty")
             handler.postDelayed(this, 17) // Upper bound ~60 Hz, independent from top-screen frames.
         }
     }
@@ -68,7 +74,12 @@ class CompanionView(context: Context) : LinearLayout(context) {
         pauseButton.text = "Pause"; pauseButton.setOnClickListener { NativeBridge.pause() }
         controls.addView(pauseButton, LayoutParams(0, -2, 1f))
         controls.addView(held("Jump", 0x8000), LayoutParams(0, -2, 1f))
+        controls.addView(held("Shoot", 0x40), LayoutParams(0, -2, 1f))
         controls.addView(held("▶", 0x100), LayoutParams(0, -2, 1f))
+        val aiming = LinearLayout(context)
+        for ((label, bit) in listOf("↑" to 0x800, "↓" to 0x400, "Aim up" to 0x20, "Aim down" to 0x10, "Run" to 0x4000, "Missile" to 0x2000))
+            aiming.addView(held(label, bit), LayoutParams(0, -2, 1f))
+        addView(aiming)
         addView(controls)
         tab("Map")
     }
@@ -98,13 +109,17 @@ class CompanionView(context: Context) : LinearLayout(context) {
             "Inventory" -> {
                 (inventory.parent as? android.view.ViewGroup)?.removeView(inventory)
                 val slots = LinearLayout(context)
-                for (i in 0..2) slots.addView(Button(context).apply { text = "Slot ${i + 1}"; setOnClickListener { NativeBridge.selectSlot(i) } }, LayoutParams(0, -2, 1f))
+                for (i in 0..2) slots.addView(Button(context).apply { text = "Slot ${i + 1}"; setOnClickListener { NativeBridge.selectSlot(i); context.getSharedPreferences("thor", 0).edit().putInt("saveSlot", i).apply() } }, LayoutParams(0, -2, 1f))
                 body.addView(slots)
                 body.addView(ScrollView(context).apply { addView(inventory) }, LayoutParams(-1, 0, 1f))
+                val game = LinearLayout(context)
+                for ((label, action) in listOf("New game" to "new", "Load game" to "load", "Save game" to "save"))
+                    game.addView(Button(context).apply { text = label; setOnClickListener { SessionHost.game(context, action) } }, LayoutParams(0, -2, 1f))
+                body.addView(game)
                 body.addView(Button(context).apply { text = "Import SRAM"; setOnClickListener { SessionHost.mainActivity?.importSram() } })
-                body.addView(Button(context).apply { text = "Export unchanged SRAM"; setOnClickListener { SessionHost.mainActivity?.exportSram() } })
+                body.addView(Button(context).apply { text = "Export SRAM"; setOnClickListener { SessionHost.mainActivity?.exportSram() } })
             }
-            "Guidance" -> body.addView(note("Hints, item tracking and progression routes are pending native progression events.\n\nThe map reveals only cells visited in the current movement session.\nNo external hint service is used."))
+            "Guidance" -> body.addView(note("Hints, item tracking and progression routes are planned for Milestone 4.\n\nThe map reveals only cells visited in the current movement session.\nNo external hint service is used."))
             "Settings" -> {
                 val options = LinearLayout(context).apply { orientation = VERTICAL }
                 body.addView(ScrollView(context).apply { addView(options) }, LayoutParams(-1, 0, 1f))
@@ -112,6 +127,26 @@ class CompanionView(context: Context) : LinearLayout(context) {
                     options.addView(CheckBox(context).apply {
                         text = label; setTextColor(Color.WHITE); isChecked = enabled
                         setOnCheckedChangeListener { _, on -> change(on); SessionHost.saveOptions(context) }
+                    })
+                }
+                options.addView(Button(context).apply {
+                    text = "Requested render refresh: ${SessionHost.renderHz} Hz"
+                    setOnClickListener {
+                        SessionHost.renderHz = if (SessionHost.renderHz == 120) 60 else 120
+                        SessionHost.saveOptions(context); tab("Settings")
+                    }
+                })
+                for (label in listOf("Jump", "Pause", "Shoot")) {
+                    options.addView(Button(context).apply {
+                        val input = SessionHost.mainActivity?.controls
+                        val code = when (label) { "Jump" -> input?.jump; "Pause" -> input?.pause; else -> input?.shoot }
+                        text = "$label controller button: ${ControllerInput.choices.firstOrNull { it.second == code }?.first}"
+                        setOnClickListener {
+                            choose("Choose $label button; conflicting bindings swap.", ControllerInput.choices.map { it.first }.toTypedArray()) { index ->
+                                val selected = ControllerInput.choices[index].second
+                                if (label == "Shoot") input?.remapShoot(selected) else input?.remap(label == "Jump", selected)
+                            }
+                        }
                     })
                 }
                 check("Widescreen", SessionHost.wide) { SessionHost.wide = it }
@@ -145,14 +180,15 @@ class CompanionView(context: Context) : LinearLayout(context) {
                 options.addView(Button(context).apply {
                     text = "Assign companion display"
                     setOnClickListener {
-                        val displays = context.getSystemService(DisplayManager::class.java).displays
+                        val displays = context.getSystemService(DisplayManager::class.java).displays.filter { it.isValid && it.displayId != SessionHost.mainActivity?.display?.displayId }
                         val entries = displays.map { "${it.name}: ${it.displayId} · ${it.mode.physicalWidth}×${it.mode.physicalHeight}" }.toTypedArray()
-                        choose("Companion display (applies on resume)", entries) { index ->
+                        choose("Companion display (applies immediately)", entries) { index ->
                             context.getSharedPreferences("thor", 0).edit().putString("helperDisplay", MainActivity.displayKey(displays[index])).apply()
+                            SessionHost.mainActivity?.refreshDisplays()
                         }
                     }
                 })
-                options.addView(note("D-pad or left stick: move · B: jump · Start: pause\n\nNative movement is provisional. Static slope geometry is decoded; original slope responses, enemies, room scripts, progression and audio are pending."))
+                options.addView(note("D-pad or left stick: move/aim · Jump, Pause and Shoot controller buttons: configurable above · Keyboard: WASD, Space, J\n\nPower Beam opens blue caps. Five missiles open red caps. Select toggles missiles; L/R aim diagonally. Down crouches, then morphs after acquiring Morph Ball. Shoot while morphed lays bombs. Native play covers the opening route; audio is planned for Milestone 3."))
             }
         }
     }

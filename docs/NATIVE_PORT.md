@@ -1,6 +1,6 @@
 # Native AYN Thor port
 
-This is a running development slice, not a playable whole-game port. The new C++20 core decodes original ROM content and supplies provisional movement; Kotlin hosts it on Android 13+ ARM64 with GLES 3 rendering and a second-screen companion. No 65816 CPU interpreter or emulator gameplay core is used.
+This is a running development slice, not a playable whole-game port: the Landing Site to Bomb Torizo route plays natively (Milestone 2), the rest of the game does not. The C++20 core decodes original ROM content and translates Samus, doors, items, saves and the route's enemies; Kotlin hosts it on Android 13+ ARM64 with GLES 3 rendering and a second-screen companion. No 65816 CPU interpreter or emulator gameplay core is used.
 
 ## Implemented
 
@@ -10,6 +10,8 @@ This is a running development slice, not a playable whole-game port. The new C++
 | Content | Bounded LoROM reads, all compression commands, 262 default room states, foreground tiles/palettes, standing/running Samus sprites |
 | Room links | Bounded door lists for all 262 rooms, destination graph, explicit development traversal with safe provisional placement |
 | Room states | Native condition-chain evaluation for events, bosses, collected items, resource capacity and entering door |
+| Combat | Native Power Beam, missiles and bombs with original artwork/speeds/cooldowns, five shots, blue/red/grey caps, shot blocks and Chozo orbs |
+| Route content | Pose transitions from `$91` tables, doors/elevator with scroll timing, load stations, Morph Ball/Bombs/Missile pickups, Pit pirates, Bomb Torizo, native new/load/save |
 | Movement | Fixed-point position/velocity, original gravity/jump and basic X-speed constants, static blocks, slope geometry, signed BTS extensions |
 | Widescreen | Additional room geometry at 16:9, original 224-pixel vertical field, centered original-width camera, original-aspect option |
 | Interpolation | NTSC timestamp accumulator, previous/current completed-state interpolation, generation reset on room selection, pause/resume reset |
@@ -26,7 +28,7 @@ Pinned toolchain: Java 21, Gradle 8.14.5, Android Gradle Plugin 8.13.2, Kotlin 2
 
 ```powershell
 cd android
-./gradlew.bat assembleDebug assembleRelease lintDebug
+./gradlew.bat testDebugUnitTest assembleDebug assembleRelease lintDebug assembleDebugAndroidTest
 ```
 
 On Linux/macOS use `bash gradlew`. The installable development APK is `android/app/build/outputs/apk/debug/app-debug.apk`. The release output is unsigned; no signing key is checked in. This project targets the Thor's ARM64 hardware, not x86 emulators.
@@ -47,9 +49,13 @@ CRC32:  D63ED5F8
 
 PAL, ROM hacks, other revisions and emulator save states are unsupported. Imported ROMs are stored privately and omitted from backup/transfer. The APK contains code and address metadata; it contains no ROM, ripped artwork, music or saves. Existing legacy repository assets are outside the Android source/build graph.
 
-Controls: D-pad/left stick or WASD to move, B/Space to jump, Start to pause. The bottom-screen controls provide the same provisional movement inputs. Choose **Companion** on the top screen for an inline helper if no secondary display exists. Under **Settings > Traverse room exit - development tool**, choose a ROM-defined link to load its destination near the entry door. This tool bypasses locks and custom scripts; it does not implement walking/shooting through doors or original door scrolling. Elevator and special transitions are rejected. Failed or stale choices preserve the current session. Movement tick and pause state survive successful traversal, with velocity/input cleared and interpolation reset. Settings scroll vertically on the bottom display.
+Controls: D-pad/left stick or WASD to move, B/Space to jump, Y/J to shoot, Select toggles missiles, Start to pause. Down crouches; down again morphs, up unmorphs. Up/down aims vertically while standing; moving with up/down aims diagonally. Existing bindings can change the default controller buttons. The bottom-screen controls provide the same provisional movement inputs. Choose **Companion** on the top screen for an inline helper if no secondary display exists. Under **Settings > Traverse room exit - development tool**, choose a ROM-defined link to load its destination near the entry door. This tool bypasses locks and custom scripts; shooting opens blue caps, while walking through room triggers and original door scrolling are still pending. Elevator and special transitions are rejected. Failed or stale choices preserve the current session. Movement tick and pause state survive successful traversal, with velocity/input cleared and interpolation reset. Settings scroll vertically on the bottom display.
 
-The companion display uses Android `Presentation`; an activity fallback is available when the OS permits it.
+The companion display uses Android `Presentation`; one tracked activity provides fallback when the OS permits it. If both secondary window paths fail, the companion opens inline. Generation tokens invalidate pending launches on suspend/removal/reassignment, and the fallback activity closes when the game stops. **Assign companion display** applies immediately and omits the game display; saved assignments use display name/physical dimensions rather than logical IDs. The companion's view uses its own display context.
+
+Settings also provide persistent **Jump controller button**, **Pause controller button** and **Shoot controller button** assignments. Choosing an already-bound button swaps the conflicting action bindings. D-pad/left stick and WASD/Space retain their movement/jump meanings. Held inputs are tracked per key and device and clear on disconnect/remap/suspension. Joystick dead zones respect device motion ranges, and the D-pad hat takes precedence over an opposing stick.
+
+**Requested render refresh** switches the game's preference between 60 and 120 Hz. The app requests a supported mode at the current physical resolution as well as a Surface frame rate. The companion requests 60 Hz. Android/firmware policy can override either request; diagnostics and presentation captures record actual cadence separately from the preference.
 
 ## Reference and tests
 
@@ -61,6 +67,18 @@ python tools/build_reference.py PATH_TO_YOUR_ROM.sfc
 ```
 
 This validates your ROM, extracts private data, rebuilds the anchored NTSC disassembly, checks byte identity, and regenerates `native/generated/reference_index.hpp`. Private outputs live under ignored `build/` and the reference's ignored `data/*.bin` files. Normal APK builds use the checked-in address index and need no reference asset extraction.
+
+Milestone 1 host-policy tests run with `testDebugUnitTest`. Build the development and instrumentation APKs, import the ROM once, and run this hardware suite from the repository root:
+
+```powershell
+python tools/verify_foundation.py --adb "$env:LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe" --serial YOUR_SERIAL --seconds 30
+```
+
+This installs the APKs, runs seven device contracts, captures both firmware modes, and restores the original system refresh settings in a `finally` block. It requires an authorized Thor with an already imported ROM and the same debug signing key as the installed APK. A signing-key mismatch fails installation without uninstalling or clearing user data. `--skip-tests` repeats captures only. Raw artifacts remain under ignored `build/m1/`. See [Milestone 1 verification](MILESTONE_1_VERIFICATION.md) for the exact limits.
+
+Route regression (about one second, needs your ROM): `build/core/thor_tests PATH_TO_YOUR_ROM.sfc --route tools/routes/landing_site_to_bomb_torizo.txt` replays recorded controller input from a new game to a defeated Bomb Torizo; `--milestone2` runs the focused station/save/item/enemy checks. On Windows with MSYS2, put `C:/msys64/ucrt64/bin` first on PATH so the matching `libstdc++` loads.
+
+For each implementation increment, use a basic build and focused smoke check; the foundation hardware suite and presentation captures are optional follow-ups. For the first Milestone 2 gameplay increment, after building the native tests, run `build/core/thor_tests PATH_TO_YOUR_ROM.sfc --gameplay` to check beams and blue caps without decoding all rooms.
 
 Portable tests without a ROM:
 
@@ -93,7 +111,7 @@ flowchart LR
     Helper --> Bottom[Bottom screen / inline panel]
 ```
 
-`Session` is the authoritative movement state; the renderer never advances it. JNI serializes access to the shared session. Android's main-thread Choreographer advances simulation and requests GL frames. The GL thread copies snapshots, then submits rendering without holding the simulation lock. The companion samples at approximately 60 Hz. Display callbacks, device input and lifecycle events operate on the main thread; imports/room decoding use a worker.
+`Session` is the authoritative movement state; the renderer never advances it. JNI serializes access to the shared session. Android's main-thread Choreographer advances simulation and requests GL frames. The Milestone 1 cadence comparison retains this backend; AGDK/Swappy is not integrated. Advertised refresh, callback frequency, GL submissions and actual presentation intervals are reported separately, and exact frame-budget compliance is diagnostic rather than a milestone blocker under the current validation policy. The GL thread copies snapshots, then submits rendering without holding the simulation lock. The companion samples at approximately 60 Hz. Display callbacks, device input and lifecycle events operate on the main thread; imports/room decoding use a worker.
 
 The NTSC clock uses 21,477,272 master-clock cycles/second and 357,366 cycles/frame rather than an alternating two-display-frame schedule. Stable interpolation adds about one simulation tick of latency. Teleports/room selections/context resets avoid blending incompatible snapshots. Animation poses and discrete gameplay events are not interpolated.
 
@@ -112,4 +130,4 @@ The widescreen renderer exposes extra world geometry around the original-width c
 | Static slope geometry | `$94:8B2B`, `$94:8E54` |
 | Signed collision extensions | `$94:9411`, `$94:9447` |
 
-See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for measured results and remaining acceptance gates.
+See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for measured results, the current validation policy and remaining functional scope.

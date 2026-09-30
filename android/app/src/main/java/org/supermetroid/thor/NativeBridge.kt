@@ -8,6 +8,9 @@ object NativeBridge {
     external fun pause()
     external fun options(widescreen: Boolean, interpolation: Boolean)
     external fun selectRoom(index: Int)
+    external fun newGame()
+    external fun loadGame()
+    external fun saveGame()
     external fun rooms(): String
     external fun doors(): String
     external fun traverseDoor(expectedRoom: Int, index: Int)

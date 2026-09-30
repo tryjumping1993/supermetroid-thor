@@ -60,7 +60,59 @@ def generate(symbol_file: Path, output: Path):
         "RoomStateCheck_BossIsDead", "UNUSED_RoomStateCheck_Morphball_8FE640",
         "RoomStateCheck_MorphballAndMissiles", "RoomStateCheck_PowerBombs",
         "UNUSED_RoomStateCheck_SpeedBooster_8FE678",
+        "BeamSpeeds_Horizontal_Vertical", "BeamSpeeds_Diagonal",
+        "ProjectileCooldowns_Uncharged", "BeamAutoFireCooldowns",
+        "ProjectileOriginOffsetsByDirection_ProjectileX_Default",
+        "ProjectileOriginOffsetsByDirection_ProjectileY_Default",
+        "ProjectileOriginOffsetsByDirection_ProjX_Moonwalk_Running",
+        "ProjectileOriginOffsetsByDirection_ProjY_Moonwalk_Running", "PoseDefinitions_YOffset",
+        "ProjectileDataTable_Uncharged_Power", "Tiles_PowerBeam", "BeamPalettes_Power",
+        "InstList_PLM_BlueDoorFacingLeftOpened_40", "InstList_PLM_BlueDoorFacingLeftOpened_41",
+        "InstList_PLM_BlueDoorFacingUpOpened_42", "InstList_PLM_BlueDoorFacingUpOpened_43",
+        "LoadStationListPointers", "PoseDefinitions", "AnimationDelayTable", "MapRoomPointers",
+        "SRAMMapData_size", "SRAMMapData_offset",
+        "TransitionTable", "PLMEntries_saveStation", "EnemyHeaders_Elevator",
+        "EnemyHeaders_ShipTop", "EnemyHeaders_ShipBottomEntrance", "InstList_ShipTop", "InstList_ShipBottom", "InstList_ShipEntrancePad_Closed",
+        "SamusPhysicsConstants_InitialYSpeeds_BombJump", "SamusPhysicsConstants_InitialYSubSpeeds_BombJump",
+        "SamusPhysicsConstants_XAccelerations_DashHeld", "SamusPhysicsConstants_XSubAccelerations_DashHeld",
+        "SamusPhysicsConstants_MaxXExtraRunSpeeds_NoSpeedBooster", "SamusPhysicsConstants_MaxXExtraRunSubSpeeds_NoSpeedBooster",
+        "DrawInst_DoorFacingLeft_A677", "DrawInst_DoorFacingRight_A683",
+        "DrawInst_DoorFacingUp_A68F", "DrawInst_DoorFacingDown_A69B",
+        "DrawInst_DoorFacingLeft_A9B3", "DrawInst_DoorFacingRight_A9EF",
+        "DrawInst_DoorFacingUp_AA2B", "DrawInst_DoorFacingDown_AA67",
+        "InstList_PLM_BlueDoorFacingLeftClosed", "InstList_PLM_BlueDoorFacingRightClosed",
+        "InstList_PLM_BlueDoorFacingUpClosed_42", "InstList_PLM_BlueDoorFacingUpClosed_43",
+        "PLMEntries_rightwardsExtension", "PLMEntries_leftwardsExtension", "PLMEntries_upwardsExtension", "PLMEntries_downwardsExtension", "PLMEntries_ScrollPLM",
+        "DrawInst_GreyDoorFacingLeft_0", "DrawInst_YellowDoorFacingLeft_0", "DrawInst_GreenDoorFacingLeft_0", "DrawInst_RedDoorFacingLeft_0",
+        "DrawInst_ItemChozoOrb", "DrawInst_ItemOrb_0", "ItemPLMGFX_Bombs", "ItemPLMGFX_MorphBall",
+        "ProjectileDataTable_NonBeam_Missile", "ProjectileCooldowns_NonBeamProjectiles", "MissileAccelerations",
+        "ProjectileAccelerations_X", "ProjectileAccelerations_Y", "BombTimerResetValue", "Tiles_Standard_Sprite_0", "Tiles_Standard_Sprite_1",
     ]
+    # Additional native enemy/animation callbacks. These are source addresses,
+    # never embedded cartridge data or a machine-code execution table.
+    prefixes = ("Instruction_Torizo_", "InstList_Torizo_", "Function_Torizo_", "TorizoInitial_",
+                "Palette_Torizo_", "Instruction_CommonAA_", "Instruction_CommonB2_",
+                "Instruction_PirateWalking_", "InstList_PirateWalking_", "Function_PirateWalking_",
+                "InstList_PirateWall_", "Instruction_PirateWall_", "Inst_PirateWall_", "Function_PirateWall_",
+                "InstList_EnemyProjectile_Torizo", "InstList_EnemyProjectile_Pirate_MotherBrain_Laser",
+                "InstList_EnemyProjectile_BombTorizoExplosionSwipe")
+    names = set(required)
+    for bank in ("AA", "B2", "86"):
+        for name in re.findall(r"^(\w+):", (source.parent / ("bank_" + bank + ".asm")).read_text(), re.MULTILINE):
+            if name.startswith(prefixes) and name in labels:
+                names.add(name)
+    required = sorted(names | {"EnemyHeaders_BombTorizo", "EnemyHeaders_PirateGreyWalking", "EnemyHeaders_PirateGreyWall",
+        "Tiles_Torizo", "TorizoInitial_XPosition", "TorizoInitial_YPosition", "TorizoInitial_XRadius", "TorizoInitial_YRadius",
+        "Instruction_Torizo_StandingUpMovement_IndexInY_XVelocities", "Instruction_Torizo_StandingUpMovement_IndexInY_YVelocities",
+        "Instruction_Torizo_BombTorizoWalkingMovement_Normal_IndexInY_velocities",
+        "Instruction_Torizo_BTWalkingMovement_Faceless_IndexInY_velocities", "RTL_AAC2C8",
+        "ExtendedSpritemap_Torizo_Blank", "InstList_Elevator", "ProjectileDataTable_NonBeam_Bomb", "Initial_Palette_spritePalette0",
+        "PLMEntries_BombTorizosCrumblingChozo", "InstList_PLM_1x1RespawningShotBlock", "InstList_PLM_1x1ShotBlock", "InstList_PLM_1x1RespawningCrumbleBlock", "InstList_PLM_BombTorizosCrumblingChozo",
+        "DrawInst_BombTorizosCrumblingChozo_0", "DrawInst_BombTorizosCrumblingChozo_1",
+        "Instruction_PLM_PreInstruction_inY", "Instruction_PLM_Sleep", "Instruction_PLM_Delete",
+        "Instruction_PLM_TransferBytesToVRAM", "Instruction_PLM_SpawnBombTorizoStatueBreakingWithArgY",
+        "Instruction_PLM_QueueSong1MusicTrack", "InitAI_EnemyProjectile_BombTorizoExplosiveSwipe_Xpositions",
+        "InitAI_EnemyProjectile_BombTorizoExplosiveSwipe_Yposition"})
     lines = ["// Generated by tools/reference_index.py. Address metadata only.",
              "// Source: InsaneFirebat/sm_disassembly (0BSD), pinned " + COMMIT,
              "#pragma once", "#include <cstdint>", "namespace thor::reference {",
@@ -71,9 +123,23 @@ def generate(symbol_file: Path, output: Path):
     lines += ["};"]
     for name in required:
         lines.append(f"inline constexpr uint32_t {name} = 0x{labels[name]:06X};")
+    lines += ["struct DoorScroll { uint16_t script; uint8_t screen, color; };", "inline constexpr DoorScroll door_scrolls[] = {"]
+    # Extract the small native scroll callbacks used by early room links.
+    for match in re.finditer(r"^(DoorASM_\w+):([\s\S]*?)(?=^\w+:|\Z)", source_text, re.MULTILINE):
+        body = match[2]
+        if re.search(r"^\s+(?:B[A-Z]{2}|JMP|JSR|JSL)\b", body, re.MULTILINE):
+            continue
+        value = None
+        for line in body.splitlines():
+            immediate = re.search(r"LDA\.B #\$([0-9A-F]{2})", line)
+            if immediate: value = int(immediate[1], 16)
+            target = re.search(r"STA\.L Scrolls(?:\+(\d+))?\s", line)
+            if target and value is not None:
+                lines.append(f"    {{0x{labels[match[1]] & 0xFFFF:04X}, {int(target[1] or 0)}, {value}}},")
+    lines += ["};"]
     lines += ["}", ""]
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text("\n".join(lines))
+    output.write_text("\n".join(lines), encoding="utf-8")
     print(f"Indexed {len(rooms)} rooms from {len(labels)} named symbols")
 
 

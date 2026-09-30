@@ -12,6 +12,7 @@ jobs:
       - run: cmake -S native -B build/core -DCMAKE_BUILD_TYPE=Release
       - run: cmake --build build/core --parallel
       - run: ctest --test-dir build/core --output-on-failure
+      - run: python3 -m unittest discover -s tools -p 'test_*.py'
   android:
     runs-on: ubuntu-latest
     steps:
@@ -22,7 +23,7 @@ jobs:
           java-version: '21'
       - uses: android-actions/setup-android@v3
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.3.13750724' 'cmake;3.31.6'
-      - run: bash gradlew assembleDebug assembleRelease lintDebug
+      - run: bash gradlew testDebugUnitTest assembleDebug assembleRelease lintDebug assembleDebugAndroidTest
         working-directory: android
       - uses: actions/upload-artifact@v4
         with:

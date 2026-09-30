@@ -1,3 +1,5 @@
+#include "thor/save_game.hpp"
+#include "thor/enemies.hpp"
 #include "thor/clock.hpp"
 #include "thor/content.hpp"
 #include "thor/session.hpp"
@@ -5,6 +7,7 @@
 #include "reference_index.hpp"
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <tuple>
@@ -136,6 +139,146 @@ void content(const std::string& path) {
             !thor::room_solid_pixel(a.room(), a.rom(), px + 4, py + 15), "Parlor viewer spawn clears its standing bounds");
     std::cout << "ROM fixtures: " << std::size(thor::reference::rooms) << " rooms, 18 Samus poses/frames" << std::endl;
 }
+void gameplay(const std::string& path) {
+    const auto rom = thor::Rom::from_file(path);
+    constexpr int32_t pixel = 65536;
+    auto empty_room = [] {
+        thor::Room room; room.width = room.height = 256;
+        room.blocks.resize(256); room.bts.resize(256); return room;
+    };
+    for (int direction = 0; direction < 10; ++direction) {
+        const auto image = thor::draw_power_beam(rom, direction);
+        require(image.width == 16 && image.height == 16 &&
+            std::any_of(image.pixels.begin(), image.pixels.end(), [](auto c) { return c != 0; }), "beam artwork decoded for direction");
+    }
+    thor::RoomGameplay shots;
+    auto room = empty_room();
+    require(shots.fire(rom, 64 * pixel, 64 * pixel, 2, true), "new press fires Power Beam");
+    require(shots.beams()[0].vx == 4 * pixel && shots.beams()[0].vy == 0 && shots.beams()[0].damage == 20,
+        "Power Beam speed and damage read from original tables");
+    require(shots.cooldown() == 15 && !shots.fire(rom, 64 * pixel, 64 * pixel, 2, true), "shot cooldown blocks repeated firing");
+    const auto initial_x = shots.beams()[0].x;
+    shots.tick(room, rom, 0, 0);
+    require(shots.beams()[0].x == initial_x + 4 * pixel, "beam advances one native tick");
+    for (int i = 1; i < 15; ++i) shots.tick(room, rom, 0, 0);
+    require(shots.fire(rom, 64 * pixel, 64 * pixel, 1, false) && shots.cooldown() == 25,
+        "held firing uses original auto-fire cooldown");
+    require(shots.beams()[1].vx == 0x2AB * 256 && shots.beams()[1].vy == -0x2AB * 256,
+        "diagonal beam uses original diagonal speed");
+
+    // Strike an extension segment rather than the root, in all orientations.
+    for (unsigned orientation = 0; orientation < 4; ++orientation) {
+        shots.reset(); room = empty_room();
+        const size_t root = 4 * 16 + 8, stride = orientation < 2 ? 16 : 1;
+        room.blocks[root] = 0xC000; room.bts[root] = uint8_t(0x40 + orientation);
+        for (size_t i = 1; i < 4; ++i) {
+            room.blocks[root + i * stride] = orientation < 2 ? 0xD000 : 0x5000;
+            room.bts[root + i * stride] = uint8_t(-int(i));
+        }
+        const bool vertical = orientation < 2;
+        require(shots.fire(rom, (vertical ? 96 : 168) * pixel, 104 * pixel,
+            vertical ? 2 : 0, true), "beam fired toward blue cap extension");
+        for (int i = 0; i < 12 && shots.doors().empty(); ++i) shots.tick(room, rom, 0, 0);
+        require(shots.doors().size() == 1 && shots.doors()[0].block == root && shots.doors()[0].timer == 6,
+            "extension resolves to blue door root and starts opening");
+        require(!shots.beams()[0].active && room.visual_revision == 1, "door absorbs beam and invalidates room texture");
+        for (int i = 0; i < 17; ++i) shots.tick(room, rom, 0, 0);
+        require(shots.doors()[0].stage == 2 && room_solid_pixel(room, rom, 136, 72), "cap remains solid during opening frames");
+        shots.tick(room, rom, 0, 0);
+        require(shots.doors()[0].stage == 3 && room.visual_revision == 4, "three six-tick frames reach open cap");
+        for (size_t i = 0; i < 4; ++i)
+            require((room.blocks[root + i * stride] >> 12) == 0, "all cap segments become air");
+        for (int i = 0; i < 94; ++i) shots.tick(room, rom, 0, 0);
+        require(shots.doors().empty() && !room_solid_pixel(room, rom, 136, 72), "effect retirement leaves door open");
+    }
+    shots.reset(); room = empty_room(); room.blocks[4 * 16 + 8] = 0xC000; room.bts[4 * 16 + 8] = 0x44;
+    shots.fire(rom, 96 * pixel, 72 * pixel, 2, true);
+    for (int i = 0; i < 12; ++i) shots.tick(room, rom, 0, 0);
+    require(shots.doors().empty() && room.blocks[4 * 16 + 8] == 0xC000, "Power Beam does not bypass coloured cap");
+    shots.reset(); room = empty_room();
+    room.width = 1024; room.blocks.resize(1024); room.bts.resize(1024);
+    for (int i = 0; i < 5; ++i) {
+        require(shots.fire(rom, 100 * pixel, 100 * pixel, 2, true), "available projectile slot fires");
+        for (int tick = 0; tick < 15; ++tick)
+            shots.tick(room, rom, shots.beams()[0].x / float(pixel) - 256, 0);
+    }
+    require(!shots.fire(rom, 100 * pixel, 100 * pixel, 2, true), "five active projectiles prevent a sixth shot");
+    // Use an actual decoded room to exercise tile redraw and session integration.
+    auto decoded = thor::load_room(rom, 2);
+    const auto before = decoded.foreground.pixels;
+    const auto root = size_t(6 * (decoded.width / 16) + 4);
+    decoded.blocks[root] = 0xC000; decoded.bts[root] = 0x40;
+    for (size_t i = 1; i < 4; ++i) { decoded.blocks[root + i * (decoded.width / 16)] = 0xD000; decoded.bts[root + i * (decoded.width / 16)] = uint8_t(-int(i)); }
+    shots.reset(); shots.fire(rom, 40 * pixel, 104 * pixel, 2, true);
+    for (int i = 0; i < 12; ++i) shots.tick(decoded, rom, 0, 0);
+    require(decoded.visual_revision > 0 && decoded.foreground.pixels != before, "door phases redraw original room tiles");
+    thor::Session session(thor::Rom::from_file(path));
+    session.step(thor::Shoot);
+    require(!session.snapshot(false).beams.empty(), "session publishes fired beam to renderer");
+    session.toggle_pause(); const auto frozen = session.gameplay().beams()[0];
+    session.step(thor::Shoot);
+    require(session.gameplay().beams()[0].x == frozen.x && session.gameplay().cooldown() == 15, "pause freezes beam and cooldown");
+    session.select_room(2);
+    require(session.snapshot(false).beams.empty() && session.gameplay().doors().empty(), "room selection resets transient gameplay");
+    std::cout << "Gameplay smoke: Power Beam / four blue cap orientations / pause / room reset" << std::endl;
+}
+void milestone2(const std::string& path) {
+    const auto rom = thor::Rom::from_file(path);
+    const auto station = thor::load_station(rom, 0, 0);
+    require(station.x == 1152 && station.y == 1088 && station.camera_x == 1024, "native new game uses original ship load station");
+    thor::Session session(thor::Rom::from_file(path));
+    require(session.save_station() == 0 && session.state().x == station.x * 65536, "ship save available at original spawn");
+    thor::Sram saved; session.save_game(saved, 1);
+    require(saved.valid(1) && !saved.valid(0), "native station save writes selected slot only");
+    thor::Progression p; p.equipped_items = p.collected_items = 0x1004; p.max_missiles = p.missiles = 5;
+    p.events.set(0); p.items.set(26); p.opened_doors.set(29); p.bosses[0] = 4;
+    p.map[0] = 0x80;
+    thor::save_progression(rom, saved, 1, p, 0, 1);
+    const auto restored = thor::restore_progression(rom, saved, 1);
+    require(restored.items == p.items && restored.opened_doors == p.opened_doors && restored.events == p.events && restored.bosses == p.bosses && restored.missiles == 5, "vanilla payload restores item, door, event and boss progression");
+    session.load_game(saved, 1);
+    require(session.room().name == "CrateriaSave" && session.state().x / 65536 == 96 && session.state().y / 65536 == 152, "native load restores original station placement");
+    p = {};
+    auto morph = thor::load_room(rom, thor::room_index_from_header(0x8F9E9F), p);
+    thor::RoomGameplay gameplay; gameplay.load(morph, rom, p);
+    auto found = std::find_if(gameplay.pickups().begin(), gameplay.pickups().end(), [](const auto& item) { return item.item == 19; });
+    require(found != gameplay.pickups().end(), "Morph Ball PLM decoded from original population");
+    const auto root = found->root;
+    require(found->revealed, "Morph Ball is initially exposed");
+    gameplay.touch(morph, rom, int(root % (morph.width / 16)) * 16 + 8, int(root / (morph.width / 16)) * 16 + 8, 21);
+    require((p.equipped_items & 4) && p.items.test(26), "Morph Ball collision updates authoritative inventory and item bit");
+    auto missile = thor::load_room(rom, thor::room_index_from_header(0x8FA107), p);
+    gameplay.load(missile, rom, p);
+    require(!gameplay.pickups().empty() && !gameplay.pickups()[0].revealed, "first missile requires shooting Chozo orb");
+    const auto mr = gameplay.pickups()[0].root; const int mx = int(mr % (missile.width / 16)) * 16 + 8, my = int(mr / (missile.width / 16)) * 16 + 8;
+    gameplay.fire(rom, (mx + 32) * 65536, my * 65536, 7, true);
+    for (int i = 0; i < 12; ++i) gameplay.tick(missile, rom, 0, 0);
+    gameplay.touch(missile, rom, mx, my, 21);
+    require(p.max_missiles == 5 && p.missiles == 5 && p.items.test(34), "first missile orb and pickup grant five missiles");
+    auto pit = thor::load_room(rom, thor::room_index_from_header(0x8F975C), p);
+    thor::Enemies enemies; gameplay.load(pit, rom, p); enemies.load(pit, rom, p);
+    require(enemies.list().size() == 5 && pit.enemy_quota == 5, "Morph Ball plus missiles selects original five-pirate Pit population");
+    for (int i = 0; i < 300; ++i) { gameplay.tick(pit, rom, 0, 0); enemies.tick(pit, rom, p, gameplay, 104, 112, 21, 0, 0, i); }
+    for (const auto& e : enemies.list()) if (e.map) {
+        const auto image = thor::draw_enemy(rom, e.kind, e.map);
+        require(std::any_of(image.pixels.begin(), image.pixels.end(), [](auto c) { return c != 0; }), "pirate original sprite pixels decoded");
+    }
+    auto boss_room = thor::load_room(rom, thor::room_index_from_header(0x8F9804), p);
+    gameplay.load(boss_room, rom, p); enemies.load(boss_room, rom, p);
+    require(enemies.list().size() == 1 && enemies.list()[0].health == 800, "Bomb Torizo native header and health");
+    p.equipped_items |= 0x1000;
+    for (int i = 0; i < 2400; ++i) {
+        gameplay.tick(boss_room, rom, 0, 0);
+        enemies.tick(boss_room, rom, p, gameplay, (i / 240) % 2 ? 64 : 196, 160, 21, 0, 0, i);
+        if (i > 1100 && i % 15 == 0) {
+            auto& beam = gameplay.beams()[0]; beam = {}; beam.active = true; beam.damage = 20;
+            beam.x = enemies.list()[0].x; beam.y = enemies.list()[0].y;
+            enemies.tick(boss_room, rom, p, gameplay, 64, 160, 21, 0, 0, i);
+        }
+    }
+    require(!gameplay.statue_active() && (p.bosses[0] & 4) && !enemies.list()[0].active, "native Bomb Torizo wakes, takes real projectile damage and completes original death script");
+    std::cout << "Milestone 2 focused smoke: stations / SRAM / Morph Ball / missile / pirates / Bomb Torizo" << std::endl;
+}
 void doors(const std::string& path) {
     thor::Session session(thor::Rom::from_file(path));
     const auto landing = session.room().doors;
@@ -197,11 +340,36 @@ void doors(const std::string& path) {
     require(session.state().vx == 0, "door load releases held movement input");
     std::cout << "Door fixtures: Landing Site / Parlor / Climb / Pit / elevator boundary" << std::endl;
 }
+// Replays recorded raw controller input (hex buttons, frame count) through
+// the native session: new game -> Landing Site -> Parlor -> Climb -> Pit ->
+// Morph Ball -> first missile -> Flyway red door -> Bomb Torizo.
+void route(const std::string& rom_path, const std::string& input_path) {
+    thor::Session session(thor::Rom::from_file(rom_path));
+    std::ifstream input(input_path);
+    require(bool(input), "route input file opens");
+    unsigned buttons = 0, count = 0;
+    std::string room;
+    while (input >> std::hex >> buttons >> std::dec >> count) {
+        for (unsigned i = 0; i < count; ++i) session.step(uint16_t(buttons));
+        if (session.room().name != room) { room = session.room().name; std::cout << "  route reached " << room << std::endl; }
+    }
+    const auto& p = session.progression();
+    require(session.room().name == "BombTorizo" && !session.state().dead, "route ends alive in the Bomb Torizo room");
+    require((p.equipped_items & 4) && (p.equipped_items & 0x1000), "route collected Morph Ball and Bombs");
+    require(p.max_missiles == 5 && p.opened_doors.any(), "route collected the first missile and opened the red door");
+    require(p.bosses[0] & 4, "route defeated Bomb Torizo natively");
+    std::cout << "Route smoke: Landing Site to Bomb Torizo" << std::endl;
+}
 }
 int main(int argc, char** argv) {
     try {
         decompression(); clocks(); saves();
-        if (argc > 1) { content(argv[1]); doors(argv[1]); }
+        if (argc > 1) {
+            if (argc > 3 && std::string(argv[2]) == "--route") route(argv[1], argv[3]);
+            else if (argc > 2 && std::string(argv[2]) == "--milestone2") { gameplay(argv[1]); milestone2(argv[1]); }
+            else if (argc > 2 && std::string(argv[2]) == "--gameplay") gameplay(argv[1]);
+            else { content(argv[1]); doors(argv[1]); gameplay(argv[1]); }
+        }
         std::cout << "PASS: " << checks << " checks" << std::endl;
         return 0;
     } catch (const std::exception& e) { std::cerr << "FAIL after " << checks << " checks: " << e.what() << std::endl; return 1; }

@@ -269,30 +269,473 @@ inline constexpr RoomRef rooms[] = {
     {0x8FE0B5, 0x8FE0C7, "CeresRidley", 1},
     {0x8FE82C, 0x8FE839, "Debug", 0},
 };
-inline constexpr uint32_t Tileset_Pointers = 0x8FE7A7;
-inline constexpr uint32_t CRE_Tiles_Compressed = 0xB98000;
+inline constexpr uint32_t AnimationDelayTable = 0x91B010;
+inline constexpr uint32_t BeamAutoFireCooldowns = 0x90C283;
+inline constexpr uint32_t BeamPalettes_Power = 0x90C3E1;
+inline constexpr uint32_t BeamSpeeds_Diagonal = 0x90C2D3;
+inline constexpr uint32_t BeamSpeeds_Horizontal_Vertical = 0x90C2D1;
+inline constexpr uint32_t BombTimerResetValue = 0x90BF9B;
 inline constexpr uint32_t CRE_TileTable_Compressed = 0xB9A09D;
-inline constexpr uint32_t SamusSpritemapTable = 0x92808D;
-inline constexpr uint32_t SamusSpritemapTableIndices_TopHalf = 0x929263;
-inline constexpr uint32_t SamusSpritemapTableIndices_BottomHalf = 0x92945D;
-inline constexpr uint32_t SamusTopHalfTilesAnimation_TilesDefinitionPointers = 0x92D91E;
+inline constexpr uint32_t CRE_Tiles_Compressed = 0xB98000;
+inline constexpr uint32_t DrawInst_BombTorizosCrumblingChozo_0 = 0x849877;
+inline constexpr uint32_t DrawInst_BombTorizosCrumblingChozo_1 = 0x84989D;
+inline constexpr uint32_t DrawInst_DoorFacingDown_A69B = 0x84A69B;
+inline constexpr uint32_t DrawInst_DoorFacingDown_AA67 = 0x84AA67;
+inline constexpr uint32_t DrawInst_DoorFacingLeft_A677 = 0x84A677;
+inline constexpr uint32_t DrawInst_DoorFacingLeft_A9B3 = 0x84A9B3;
+inline constexpr uint32_t DrawInst_DoorFacingRight_A683 = 0x84A683;
+inline constexpr uint32_t DrawInst_DoorFacingRight_A9EF = 0x84A9EF;
+inline constexpr uint32_t DrawInst_DoorFacingUp_A68F = 0x84A68F;
+inline constexpr uint32_t DrawInst_DoorFacingUp_AA2B = 0x84AA2B;
+inline constexpr uint32_t DrawInst_GreenDoorFacingLeft_0 = 0x84A827;
+inline constexpr uint32_t DrawInst_GreyDoorFacingLeft_0 = 0x84A6A7;
+inline constexpr uint32_t DrawInst_ItemChozoOrb = 0x84A2B5;
+inline constexpr uint32_t DrawInst_ItemOrb_0 = 0x84A2C7;
+inline constexpr uint32_t DrawInst_RedDoorFacingLeft_0 = 0x84A8E7;
+inline constexpr uint32_t DrawInst_YellowDoorFacingLeft_0 = 0x84A767;
+inline constexpr uint32_t EnemyHeaders_BombTorizo = 0xA0EEFF;
+inline constexpr uint32_t EnemyHeaders_Elevator = 0xA0D73F;
+inline constexpr uint32_t EnemyHeaders_PirateGreyWalking = 0xA0F653;
+inline constexpr uint32_t EnemyHeaders_PirateGreyWall = 0xA0F353;
+inline constexpr uint32_t EnemyHeaders_ShipBottomEntrance = 0xA0D0BF;
+inline constexpr uint32_t EnemyHeaders_ShipTop = 0xA0D07F;
+inline constexpr uint32_t ExtendedSpritemap_Torizo_Blank = 0xAA87D0;
+inline constexpr uint32_t Function_PirateWalking_WalkingLeft = 0xB2FD44;
+inline constexpr uint32_t Function_PirateWalking_WalkingRight = 0xB2FDCE;
+inline constexpr uint32_t Function_PirateWall_ClimbingLeftWall = 0xB2F034;
+inline constexpr uint32_t Function_PirateWall_ClimbingRightWall = 0xB2F0C8;
+inline constexpr uint32_t Function_PirateWall_WallJumpingLeft = 0xB2F0E4;
+inline constexpr uint32_t Function_PirateWall_WallJumpingRight = 0xB2F050;
+inline constexpr uint32_t Function_Torizo_Movement_Attacking = 0xAAC828;
+inline constexpr uint32_t Function_Torizo_Movement_Jumping_Falling = 0xAAC82C;
+inline constexpr uint32_t Function_Torizo_Movement_Walking = 0xAAC752;
+inline constexpr uint32_t Function_Torizo_NormalMovement = 0xAAC6FF;
+inline constexpr uint32_t Function_Torizo_SimpleMovement = 0xAAC6BF;
+inline constexpr uint32_t Function_Torizo_WakeWhenBombTorizoChozoFinishesCrumbling = 0xAAC6C6;
+inline constexpr uint32_t InitAI_EnemyProjectile_BombTorizoExplosiveSwipe_Xpositions = 0x86A738;
+inline constexpr uint32_t InitAI_EnemyProjectile_BombTorizoExplosiveSwipe_Yposition = 0x86A74E;
+inline constexpr uint32_t Initial_Palette_spritePalette0 = 0x9A8100;
+inline constexpr uint32_t InstList_Elevator = 0xA394D6;
+inline constexpr uint32_t InstList_EnemyProjectile_BombTorizoExplosionSwipe = 0x86A4AA;
+inline constexpr uint32_t InstList_EnemyProjectile_Pirate_MotherBrain_Laser_Left_0 = 0x869F41;
+inline constexpr uint32_t InstList_EnemyProjectile_Pirate_MotherBrain_Laser_Left_1 = 0x869F71;
+inline constexpr uint32_t InstList_EnemyProjectile_Pirate_MotherBrain_Laser_Right_0 = 0x869F7D;
+inline constexpr uint32_t InstList_EnemyProjectile_Pirate_MotherBrain_Laser_Right_1 = 0x869FAD;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoChozoOrbs_BreakOnFloor = 0x86AB41;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoChozoOrbs_BreakOnWall = 0x86AB25;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoChozoOrbs_Left = 0x86AB15;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoChozoOrbs_Right = 0x86AB1D;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoDeathExplosion_0 = 0x86A3FA;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoDeathExplosion_1 = 0x86A408;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoDeathExplosion_2 = 0x86A431;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoDeathExplosion_3 = 0x86A435;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoLandingDustCloud_LeftFoot = 0x86AFB5;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoLandingDustCloud_RightFoot = 0x86AF9D;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoSonicBoom_FiredLeft = 0x86ADBF;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoSonicBoom_FiredRight = 0x86ADD2;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoSonicBoom_HitWall_0 = 0x86ADE5;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoSonicBoom_HitWall_1 = 0x86ADF1;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoSonicBoom_MovingLeft = 0x86ADCA;
+inline constexpr uint32_t InstList_EnemyProjectile_TorizoSonicBoom_MovingRight = 0x86ADDD;
+inline constexpr uint32_t InstList_PLM_1x1RespawningCrumbleBlock = 0x84C9F9;
+inline constexpr uint32_t InstList_PLM_1x1RespawningShotBlock = 0x84CADF;
+inline constexpr uint32_t InstList_PLM_1x1ShotBlock = 0x84CBB7;
+inline constexpr uint32_t InstList_PLM_BlueDoorFacingLeftClosed = 0x84C49E;
+inline constexpr uint32_t InstList_PLM_BlueDoorFacingLeftOpened_40 = 0x84C489;
+inline constexpr uint32_t InstList_PLM_BlueDoorFacingLeftOpened_41 = 0x84C4BA;
+inline constexpr uint32_t InstList_PLM_BlueDoorFacingRightClosed = 0x84C4CF;
+inline constexpr uint32_t InstList_PLM_BlueDoorFacingUpClosed_42 = 0x84C500;
+inline constexpr uint32_t InstList_PLM_BlueDoorFacingUpClosed_43 = 0x84C531;
+inline constexpr uint32_t InstList_PLM_BlueDoorFacingUpOpened_42 = 0x84C4EB;
+inline constexpr uint32_t InstList_PLM_BlueDoorFacingUpOpened_43 = 0x84C51C;
+inline constexpr uint32_t InstList_PLM_BombTorizosCrumblingChozo = 0x84D368;
+inline constexpr uint32_t InstList_PirateWalking_FireLasersLeft = 0xB2FB8C;
+inline constexpr uint32_t InstList_PirateWalking_FireLasersRight = 0xB2FC0E;
+inline constexpr uint32_t InstList_PirateWalking_Flinch_FacingLeft = 0xB2FB4C;
+inline constexpr uint32_t InstList_PirateWalking_Flinch_FacingRight = 0xB2FB58;
+inline constexpr uint32_t InstList_PirateWalking_LookingAround_FacingLeft = 0xB2FBC6;
+inline constexpr uint32_t InstList_PirateWalking_LookingAround_FacingRight = 0xB2FC48;
+inline constexpr uint32_t InstList_PirateWalking_WalkingLeft_0 = 0xB2FB64;
+inline constexpr uint32_t InstList_PirateWalking_WalkingLeft_1 = 0xB2FB68;
+inline constexpr uint32_t InstList_PirateWalking_WalkingRight_0 = 0xB2FBE6;
+inline constexpr uint32_t InstList_PirateWalking_WalkingRight_1 = 0xB2FBEA;
+inline constexpr uint32_t InstList_PirateWall_FireLaser_WallJumpLeft = 0xB2ECC0;
+inline constexpr uint32_t InstList_PirateWall_FireLaser_WallJumpRight = 0xB2ED80;
+inline constexpr uint32_t InstList_PirateWall_LandedOnLeftWall = 0xB2ECE4;
+inline constexpr uint32_t InstList_PirateWall_LandingOnRightWall = 0xB2EDA4;
+inline constexpr uint32_t InstList_PirateWall_MovingDownLeftWall_0 = 0xB2ED36;
+inline constexpr uint32_t InstList_PirateWall_MovingDownLeftWall_1 = 0xB2ED3E;
+inline constexpr uint32_t InstList_PirateWall_MovingDownRightWall_0 = 0xB2EDAC;
+inline constexpr uint32_t InstList_PirateWall_MovingDownRightWall_1 = 0xB2EDB4;
+inline constexpr uint32_t InstList_PirateWall_MovingUpLeftWall_0 = 0xB2ECEC;
+inline constexpr uint32_t InstList_PirateWall_MovingUpLeftWall_1 = 0xB2ECF4;
+inline constexpr uint32_t InstList_PirateWall_MovingUpRightWall_0 = 0xB2EDF6;
+inline constexpr uint32_t InstList_PirateWall_MovingUpRightWall_1 = 0xB2EDFE;
+inline constexpr uint32_t InstList_ShipBottom = 0xA2A61C;
+inline constexpr uint32_t InstList_ShipEntrancePad_Closed = 0xA2A60E;
+inline constexpr uint32_t InstList_ShipTop = 0xA2A616;
+inline constexpr uint32_t InstList_Torizo_BombTorizo_Initial_0 = 0xAAB879;
+inline constexpr uint32_t InstList_Torizo_BombTorizo_Initial_1 = 0xAAB8C7;
+inline constexpr uint32_t InstList_Torizo_BombTorizo_Initial_2 = 0xAAB935;
+inline constexpr uint32_t InstList_Torizo_Callable_BlowUpBombTorizosFace = 0xAAB155;
+inline constexpr uint32_t InstList_Torizo_DeathSequence_0 = 0xAAB1C8;
+inline constexpr uint32_t InstList_Torizo_DeathSequence_1 = 0xAAB1D2;
+inline constexpr uint32_t InstList_Torizo_DeathSequence_2 = 0xAAB1E2;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_ExplosiveSwipe_LeftFootForward = 0xAABBDE;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_ExplosiveSwipe_RightFootForward = 0xAABB5C;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_Faceless_TurningLeft = 0xAABD0E;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_Faceless_Walking_LeftLegMoving = 0xAABD52;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_Faceless_Walking_RightLegMoving = 0xAABD18;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_Falling_0 = 0xAABC78;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_Falling_1 = 0xAABC80;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_Falling_2 = 0xAABC88;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_LandLeftFootFwd_0 = 0xAABC96;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_LandLeftFootFwd_1 = 0xAABCA6;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_LandLeftFootFwd_2 = 0xAABCAE;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_LandLeftFootFwd_3 = 0xAABCB6;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_LandLeftFootFwd_4 = 0xAABCBE;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_RightFootFwd_0 = 0xAABCD2;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_RightFootFwd_1 = 0xAABCE2;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_RightFootFwd_2 = 0xAABCEA;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_RightFootFwd_3 = 0xAABCF2;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingBackward_RightFootFwd_4 = 0xAABCFA;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingForwards_0 = 0xAABC60;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_JumpingForwards_1 = 0xAABC70;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_SonicBooms_LeftFootForward_0 = 0xAABAF2;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_SonicBooms_LeftFootForward_1 = 0xAABAFA;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_SonicBooms_RightFootForward_0 = 0xAABA88;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_SonicBooms_RightFootForward_1 = 0xAABA90;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_SpewingChozoOrbs_LeftFootFwd_0 = 0xAABA46;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_SpewingChozoOrbs_LeftFootFwd_1 = 0xAABA68;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_SpewingChozoOrbs_RightFootFwd_0 = 0xAABA04;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_SpewingChozoOrbs_RightFootFwd_1 = 0xAABA26;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_TurningLeft = 0xAAB962;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_Walking_LeftLegMoving = 0xAAB9B6;
+inline constexpr uint32_t InstList_Torizo_FacingLeft_Walking_RightLegMoving = 0xAAB96C;
+inline constexpr uint32_t InstList_Torizo_FacingRight_ExplosiveSwipe_LeftFootForward = 0xAABFD6;
+inline constexpr uint32_t InstList_Torizo_FacingRight_ExplosiveSwipe_RightFootForward = 0xAAC058;
+inline constexpr uint32_t InstList_Torizo_FacingRight_Faceless_TurningRight = 0xAAC188;
+inline constexpr uint32_t InstList_Torizo_FacingRight_Faceless_Walking_LeftLegMoving = 0xAAC192;
+inline constexpr uint32_t InstList_Torizo_FacingRight_Faceless_Walking_RightLegMoving = 0xAAC1CC;
+inline constexpr uint32_t InstList_Torizo_FacingRight_Falling_0 = 0xAAC0F2;
+inline constexpr uint32_t InstList_Torizo_FacingRight_Falling_1 = 0xAAC0FA;
+inline constexpr uint32_t InstList_Torizo_FacingRight_Falling_2 = 0xAAC102;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackward_LandRightFootFwd_0 = 0xAAC110;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackward_LandRightFootFwd_1 = 0xAAC120;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackward_LandRightFootFwd_2 = 0xAAC128;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackward_LandRightFootFwd_3 = 0xAAC130;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackward_LandRightFootFwd_4 = 0xAAC138;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackwards_LandLeftFootFwd_0 = 0xAAC14C;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackwards_LandLeftFootFwd_1 = 0xAAC15C;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackwards_LandLeftFootFwd_2 = 0xAAC164;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackwards_LandLeftFootFwd_3 = 0xAAC16C;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpBackwards_LandLeftFootFwd_4 = 0xAAC174;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpingForwards_0 = 0xAAC0DA;
+inline constexpr uint32_t InstList_Torizo_FacingRight_JumpingForwards_1 = 0xAAC0EA;
+inline constexpr uint32_t InstList_Torizo_FacingRight_SonicBooms_LeftFootForward_0 = 0xAABF02;
+inline constexpr uint32_t InstList_Torizo_FacingRight_SonicBooms_LeftFootForward_1 = 0xAABF0A;
+inline constexpr uint32_t InstList_Torizo_FacingRight_SonicBooms_RightFootForward_0 = 0xAABF6C;
+inline constexpr uint32_t InstList_Torizo_FacingRight_SonicBooms_RightFootForward_1 = 0xAABF74;
+inline constexpr uint32_t InstList_Torizo_FacingRight_SpewingChozoOrbs_LeftFootFwd_0 = 0xAABE7E;
+inline constexpr uint32_t InstList_Torizo_FacingRight_SpewingChozoOrbs_LeftFootFwd_1 = 0xAABEA0;
+inline constexpr uint32_t InstList_Torizo_FacingRight_SpewingChozoOrbs_RightFootFwd_0 = 0xAABEC0;
+inline constexpr uint32_t InstList_Torizo_FacingRight_SpewingChozoOrbs_RightFootFwd_1 = 0xAABEE2;
+inline constexpr uint32_t InstList_Torizo_FacingRight_TurningRight = 0xAABDD8;
+inline constexpr uint32_t InstList_Torizo_FacingRight_Walking_LeftLegMoving = 0xAABDE2;
+inline constexpr uint32_t InstList_Torizo_FacingRight_Walking_RightLegMoving = 0xAABE30;
+inline constexpr uint32_t InstList_Torizo_SpecialCallable_BlowUpBombTorizosGut = 0xAAB0E5;
+inline constexpr uint32_t InstList_Torizo_Stunned_0 = 0xAAD193;
+inline constexpr uint32_t InstList_Torizo_Stunned_1 = 0xAAD1A1;
+inline constexpr uint32_t Inst_PirateWall_MoveYPixelsDown_ChangeDirOnCollision_Left = 0xB2EE40;
+inline constexpr uint32_t Inst_PirateWall_MoveYPixelsDown_ChangeDirOnCollision_Right = 0xB2EE72;
+inline constexpr uint32_t Instruction_CommonAA_CallFunctionInY = 0xAA808A;
+inline constexpr uint32_t Instruction_CommonAA_CallFunctionInY_WithA = 0xAA809C;
+inline constexpr uint32_t Instruction_CommonAA_DecrementTimer_GotoYIfNonZero = 0xAA8108;
+inline constexpr uint32_t Instruction_CommonAA_DecrementTimer_GotoYIfNonZero_duplicate = 0xAA8110;
+inline constexpr uint32_t Instruction_CommonAA_DecrementTimer_GotoY_PlusY_IfNonZero = 0xAA8118;
+inline constexpr uint32_t Instruction_CommonAA_DeleteEnemy = 0xAA807C;
+inline constexpr uint32_t Instruction_CommonAA_DisableOffScreenProcessing = 0xAA817D;
+inline constexpr uint32_t Instruction_CommonAA_EnableOffScreenProcessing = 0xAA8173;
+inline constexpr uint32_t Instruction_CommonAA_Enemy0FB2_InY = 0xAA806B;
+inline constexpr uint32_t Instruction_CommonAA_GotoY = 0xAA80ED;
+inline constexpr uint32_t Instruction_CommonAA_GotoY_PlusY = 0xAA80F2;
+inline constexpr uint32_t Instruction_CommonAA_SetEnemy0FB2ToRTS = 0xAA8074;
+inline constexpr uint32_t Instruction_CommonAA_SkipNextInstruction = 0xAA812C;
+inline constexpr uint32_t Instruction_CommonAA_Sleep = 0xAA812F;
+inline constexpr uint32_t Instruction_CommonAA_TimerInY = 0xAA8123;
+inline constexpr uint32_t Instruction_CommonAA_TransferYBytesInYToVRAM = 0xAA814B;
+inline constexpr uint32_t Instruction_CommonAA_WaitYFrames = 0xAA813A;
+inline constexpr uint32_t Instruction_CommonB2_CallFunctionInY = 0xB2808A;
+inline constexpr uint32_t Instruction_CommonB2_CallFunctionInY_WithA = 0xB2809C;
+inline constexpr uint32_t Instruction_CommonB2_DecrementTimer_GotoYIfNonZero = 0xB28108;
+inline constexpr uint32_t Instruction_CommonB2_DecrementTimer_GotoYIfNonZero_duplicate = 0xB28110;
+inline constexpr uint32_t Instruction_CommonB2_DecrementTimer_GotoY_PlusY_IfNonZero = 0xB28118;
+inline constexpr uint32_t Instruction_CommonB2_DeleteEnemy = 0xB2807C;
+inline constexpr uint32_t Instruction_CommonB2_DisableOffScreenProcessing = 0xB2817D;
+inline constexpr uint32_t Instruction_CommonB2_EnableOffScreenProcessing = 0xB28173;
+inline constexpr uint32_t Instruction_CommonB2_Enemy0FB2_InY = 0xB2806B;
+inline constexpr uint32_t Instruction_CommonB2_GotoY = 0xB280ED;
+inline constexpr uint32_t Instruction_CommonB2_GotoY_PlusY = 0xB280F2;
+inline constexpr uint32_t Instruction_CommonB2_SetEnemy0FB2ToRTS = 0xB28074;
+inline constexpr uint32_t Instruction_CommonB2_SkipNextInstruction = 0xB2812C;
+inline constexpr uint32_t Instruction_CommonB2_Sleep = 0xB2812F;
+inline constexpr uint32_t Instruction_CommonB2_TimerInY = 0xB28123;
+inline constexpr uint32_t Instruction_CommonB2_TransferYBytesInYToVRAM = 0xB2814B;
+inline constexpr uint32_t Instruction_CommonB2_WaitYFrames = 0xB2813A;
+inline constexpr uint32_t Instruction_PLM_Delete = 0x8486BC;
+inline constexpr uint32_t Instruction_PLM_PreInstruction_inY = 0x8486C1;
+inline constexpr uint32_t Instruction_PLM_QueueSong1MusicTrack = 0x84D3C7;
+inline constexpr uint32_t Instruction_PLM_Sleep = 0x8486B4;
+inline constexpr uint32_t Instruction_PLM_SpawnBombTorizoStatueBreakingWithArgY = 0x84D357;
+inline constexpr uint32_t Instruction_PLM_TransferBytesToVRAM = 0x8487E5;
+inline constexpr uint32_t Instruction_PirateWalking_ChooseAMovement = 0xB2FCC8;
+inline constexpr uint32_t Instruction_PirateWalking_FireLaserLeftWithYOffsetInY = 0xB2FC68;
+inline constexpr uint32_t Instruction_PirateWalking_FireLaserRightWithYOffsetInY = 0xB2FC90;
+inline constexpr uint32_t Instruction_PirateWalking_FunctionInY = 0xB2FCB8;
+inline constexpr uint32_t Instruction_PirateWall_FireLaserLeft = 0xB2EF2A;
+inline constexpr uint32_t Instruction_PirateWall_FireLaserRight = 0xB2EF5D;
+inline constexpr uint32_t Instruction_PirateWall_FunctionInY = 0xB2EF83;
+inline constexpr uint32_t Instruction_PirateWall_PrepareWallJumpToLeft = 0xB2EEFD;
+inline constexpr uint32_t Instruction_PirateWall_PrepareWallJumpToRight = 0xB2EED4;
+inline constexpr uint32_t Instruction_PirateWall_QueueSpacePirateAttackSFX = 0xB2EF93;
+inline constexpr uint32_t Instruction_PirateWall_RandomlyChooseADirection_LeftWall = 0xB2EEA4;
+inline constexpr uint32_t Instruction_PirateWall_RandomlyChooseADirection_RightWall = 0xB2EEBC;
+inline constexpr uint32_t Instruction_Torizo_AdvanceGradualColorChange = 0xAAB271;
+inline constexpr uint32_t Instruction_Torizo_BTWalkingMovement_Faceless_IndexInY = 0xAAC4E5;
+inline constexpr uint32_t Instruction_Torizo_BTWalkingMovement_Faceless_IndexInY_velocities = 0xAAC532;
+inline constexpr uint32_t Instruction_Torizo_BombTorizoWalkingMovement_Normal_IndexInY = 0xAAC470;
+inline constexpr uint32_t Instruction_Torizo_BombTorizoWalkingMovement_Normal_IndexInY_velocities = 0xAAC4BD;
+inline constexpr uint32_t Instruction_Torizo_CallYIfSamusIsLessThan38PixelsInFront = 0xAAC567;
+inline constexpr uint32_t Instruction_Torizo_CallY_OrY2_ForBombTorizoAttack = 0xAAC5A4;
+inline constexpr uint32_t Instruction_Torizo_ClearAnimationLock = 0xAAC2D1;
+inline constexpr uint32_t Instruction_Torizo_FunctionInY = 0xAAB09C;
+inline constexpr uint32_t Instruction_Torizo_GotoGutExplosionLinkInstruction = 0xAAC2FD;
+inline constexpr uint32_t Instruction_Torizo_GotoYAndJumpBackwardsIfLessThan20Pixels = 0xAAC58B;
+inline constexpr uint32_t Instruction_Torizo_GotoY_IfFaceBlownUp_ElseGotoY2_IfGolden = 0xAAC2D9;
+inline constexpr uint32_t Instruction_Torizo_GotoY_IfNotHitGround = 0xAACACE;
+inline constexpr uint32_t Instruction_Torizo_GotoY_IfRising = 0xAAC55A;
+inline constexpr uint32_t Instruction_Torizo_LinkInstructionInY = 0xAAC2ED;
+inline constexpr uint32_t Instruction_Torizo_LoadGoldenTorizoPalettes = 0xAACADE;
+inline constexpr uint32_t Instruction_Torizo_MarkBTGutBlownUp_Spawn6BTDroolProjectiles = 0xAAB11D;
+inline constexpr uint32_t Instruction_Torizo_MarkBombTorizoFaceBlownUp = 0xAAB1BE;
+inline constexpr uint32_t Instruction_Torizo_PlayShotTorizoSFX = 0xAAC610;
+inline constexpr uint32_t Instruction_Torizo_PlayTorizoFootstepsSFX = 0xAAC618;
+inline constexpr uint32_t Instruction_Torizo_QueueSonicBoomSFX = 0xAAD39F;
+inline constexpr uint32_t Instruction_Torizo_Return = 0xAAC2F7;
+inline constexpr uint32_t Instruction_Torizo_SetAnimationLock = 0xAAC2C9;
+inline constexpr uint32_t Instruction_Torizo_SetAsInvisible = 0xAAB22E;
+inline constexpr uint32_t Instruction_Torizo_SetAsVisible = 0xAAB224;
+inline constexpr uint32_t Instruction_Torizo_SetBossBit_QueueElevatorMusic_SpawnDrops = 0xAAB24D;
+inline constexpr uint32_t Instruction_Torizo_SetSteppedLeftWithLeftFootState = 0xAAC377;
+inline constexpr uint32_t Instruction_Torizo_SetSteppedLeftWithRightFootState = 0xAAC3A0;
+inline constexpr uint32_t Instruction_Torizo_SetSteppedRightWithLeftFootState = 0xAAC3B6;
+inline constexpr uint32_t Instruction_Torizo_SetSteppedRightWithRightFootState = 0xAAC38A;
+inline constexpr uint32_t Instruction_Torizo_SetTorizoTurningAroundFlag = 0xAAC36D;
+inline constexpr uint32_t Instruction_Torizo_SetupPaletteTransitionToBlack = 0xAAB238;
+inline constexpr uint32_t Instruction_Torizo_SetupPaletteTransitionToNormalTorizo = 0xAAB94D;
+inline constexpr uint32_t Instruction_Torizo_SittingDownMovement_IndexInY = 0xAAC41E;
+inline constexpr uint32_t Instruction_Torizo_Spawn5LowHealthExplosion_SleepFor28Frames = 0xAAC303;
+inline constexpr uint32_t Instruction_Torizo_SpawnBombTorizoExplosiveSwipeWithParamY = 0xAAC601;
+inline constexpr uint32_t Instruction_Torizo_SpawnBombTorizoSonicBoomWithParameterY = 0xAAC5E3;
+inline constexpr uint32_t Instruction_Torizo_SpawnBombTorizosChozoOrbs = 0xAAC5CB;
+inline constexpr uint32_t Instruction_Torizo_SpawnGoldenTorizoSonicBoomWithParameterY = 0xAAC5F2;
+inline constexpr uint32_t Instruction_Torizo_SpawnLowHealthInitialDroolIfHealthIsLow = 0xAAC35B;
+inline constexpr uint32_t Instruction_Torizo_SpawnTorizoDeathExplosion_SleepFor1IFrame = 0xAAC32F;
+inline constexpr uint32_t Instruction_Torizo_SpawnTorizoLandingDustClouds = 0xAAC34A;
+inline constexpr uint32_t Instruction_Torizo_StandingUpMovement_IndexInY = 0xAAC3CC;
+inline constexpr uint32_t Instruction_Torizo_StandingUpMovement_IndexInY_XVelocities = 0xAAC3EE;
+inline constexpr uint32_t Instruction_Torizo_StandingUpMovement_IndexInY_YVelocities = 0xAAC40E;
+inline constexpr uint32_t Instruction_Torizo_StartFightMusic_BombTorizoBellyPaletteFX = 0xAAB951;
+inline constexpr uint32_t ItemPLMGFX_Bombs = 0x898000;
+inline constexpr uint32_t ItemPLMGFX_MorphBall = 0x898700;
+inline constexpr uint32_t LoadStationListPointers = 0x80C4B5;
+inline constexpr uint32_t MapRoomPointers = 0x8182D6;
+inline constexpr uint32_t MissileAccelerations = 0x90C303;
+inline constexpr uint32_t PLMEntries_BombTorizosCrumblingChozo = 0x84D6EA;
+inline constexpr uint32_t PLMEntries_ScrollPLM = 0x84B703;
+inline constexpr uint32_t PLMEntries_downwardsExtension = 0x84B643;
+inline constexpr uint32_t PLMEntries_leftwardsExtension = 0x84B63F;
+inline constexpr uint32_t PLMEntries_rightwardsExtension = 0x84B63B;
+inline constexpr uint32_t PLMEntries_saveStation = 0x84B76F;
+inline constexpr uint32_t PLMEntries_upwardsExtension = 0x84B647;
+inline constexpr uint32_t Palette_Torizo_BombTorizoStatue = 0xAA86A7;
+inline constexpr uint32_t Palette_Torizo_GoldenTorizo_SpritePalette1 = 0xAA8787;
+inline constexpr uint32_t Palette_Torizo_GoldenTorizo_SpritePalette2 = 0xAA87A7;
+inline constexpr uint32_t Palette_Torizo_InitialBombTorizo_SpritePalette1 = 0xAA86C7;
+inline constexpr uint32_t Palette_Torizo_InitialBombTorizo_SpritePalette2 = 0xAA86E7;
+inline constexpr uint32_t Palette_Torizo_InitialGoldenTorizo_SpritePalette1 = 0xAA8747;
+inline constexpr uint32_t Palette_Torizo_InitialGoldenTorizo_SpritePalette2 = 0xAA8767;
+inline constexpr uint32_t Palette_Torizo_Normal_SpritePalette1 = 0xAA8707;
+inline constexpr uint32_t Palette_Torizo_Normal_SpritePalette2 = 0xAA8727;
+inline constexpr uint32_t Palette_Torizo_OrbProjectile = 0xAA8687;
+inline constexpr uint32_t PoseDefinitions = 0x91B629;
+inline constexpr uint32_t PoseDefinitions_YOffset = 0x91B62D;
+inline constexpr uint32_t ProjectileAccelerations_X = 0x90C353;
+inline constexpr uint32_t ProjectileAccelerations_Y = 0x90C367;
+inline constexpr uint32_t ProjectileCooldowns_NonBeamProjectiles = 0x90C27A;
+inline constexpr uint32_t ProjectileCooldowns_Uncharged = 0x90C254;
+inline constexpr uint32_t ProjectileDataTable_NonBeam_Bomb = 0x938675;
+inline constexpr uint32_t ProjectileDataTable_NonBeam_Missile = 0x938641;
+inline constexpr uint32_t ProjectileDataTable_Uncharged_Power = 0x938431;
+inline constexpr uint32_t ProjectileOriginOffsetsByDirection_ProjX_Moonwalk_Running = 0x90C22C;
+inline constexpr uint32_t ProjectileOriginOffsetsByDirection_ProjY_Moonwalk_Running = 0x90C240;
+inline constexpr uint32_t ProjectileOriginOffsetsByDirection_ProjectileX_Default = 0x90C204;
+inline constexpr uint32_t ProjectileOriginOffsetsByDirection_ProjectileY_Default = 0x90C218;
+inline constexpr uint32_t RTL_AAC2C8 = 0xAAC2C8;
+inline constexpr uint32_t RoomStateCheck_BossIsDead = 0x8FE629;
+inline constexpr uint32_t RoomStateCheck_EventHasBeenSet = 0x8FE612;
+inline constexpr uint32_t RoomStateCheck_MainAreaBossIsDead = 0x8FE5FF;
+inline constexpr uint32_t RoomStateCheck_MorphballAndMissiles = 0x8FE652;
+inline constexpr uint32_t RoomStateCheck_PowerBombs = 0x8FE669;
+inline constexpr uint32_t SRAMMapData_offset = 0x818138;
+inline constexpr uint32_t SRAMMapData_size = 0x818131;
 inline constexpr uint32_t SamusBottomHalfTilesAnimation_TilesDefinitionPointers = 0x92D938;
-inline constexpr uint32_t SamusTilesAnimation_AnimationDefinitionPointers = 0x92D94E;
 inline constexpr uint32_t SamusPalettes_PowerSuit = 0x9B9400;
-inline constexpr uint32_t SamusPhysicsConstants_YSubAccelerationInAir = 0x909EA1;
-inline constexpr uint32_t SamusPhysicsConstants_YAccelerationInAir = 0x909EA7;
+inline constexpr uint32_t SamusPhysicsConstants_InitialYSpeeds_BombJump = 0x909EF5;
 inline constexpr uint32_t SamusPhysicsConstants_InitialYSpeeds_Jumping = 0x909EB9;
+inline constexpr uint32_t SamusPhysicsConstants_InitialYSubSpeeds_BombJump = 0x909EFB;
 inline constexpr uint32_t SamusPhysicsConstants_InitialYSubSpeeds_Jumping = 0x909EBF;
+inline constexpr uint32_t SamusPhysicsConstants_MaxXExtraRunSpeeds_NoSpeedBooster = 0x909F19;
+inline constexpr uint32_t SamusPhysicsConstants_MaxXExtraRunSubSpeeds_NoSpeedBooster = 0x909F1F;
+inline constexpr uint32_t SamusPhysicsConstants_XAccelerations_DashHeld = 0x909F01;
+inline constexpr uint32_t SamusPhysicsConstants_XSubAccelerations_DashHeld = 0x909F07;
+inline constexpr uint32_t SamusPhysicsConstants_YAccelerationInAir = 0x909EA7;
+inline constexpr uint32_t SamusPhysicsConstants_YSubAccelerationInAir = 0x909EA1;
+inline constexpr uint32_t SamusSpritemapTable = 0x92808D;
+inline constexpr uint32_t SamusSpritemapTableIndices_BottomHalf = 0x92945D;
+inline constexpr uint32_t SamusSpritemapTableIndices_TopHalf = 0x929263;
+inline constexpr uint32_t SamusTilesAnimation_AnimationDefinitionPointers = 0x92D94E;
+inline constexpr uint32_t SamusTopHalfTilesAnimation_TilesDefinitionPointers = 0x92D91E;
 inline constexpr uint32_t SamusXSpeedTable_Normal = 0x909F55;
 inline constexpr uint32_t SlopeDefinitions_SlopeTopXOffsetByYPixel = 0x948B2B;
 inline constexpr uint32_t SquareSlopeDefinitions_Bank94 = 0x948E54;
-inline constexpr uint32_t Use_StatePointer_inX = 0x8FE5E6;
+inline constexpr uint32_t Tiles_PowerBeam = 0x9AF200;
+inline constexpr uint32_t Tiles_Standard_Sprite_0 = 0x9AD200;
+inline constexpr uint32_t Tiles_Standard_Sprite_1 = 0x9AEA00;
+inline constexpr uint32_t Tiles_Torizo = 0xAAB279;
+inline constexpr uint32_t Tileset_Pointers = 0x8FE7A7;
+inline constexpr uint32_t TorizoInitial_XPosition = 0xAAC95F;
+inline constexpr uint32_t TorizoInitial_XRadius = 0xAAC96F;
+inline constexpr uint32_t TorizoInitial_YPosition = 0xAAC963;
+inline constexpr uint32_t TorizoInitial_YRadius = 0xAAC973;
+inline constexpr uint32_t TransitionTable = 0x919EE2;
 inline constexpr uint32_t UNUSED_RoomStateCheck_Door_8FE5EB = 0x8FE5EB;
-inline constexpr uint32_t RoomStateCheck_MainAreaBossIsDead = 0x8FE5FF;
-inline constexpr uint32_t RoomStateCheck_EventHasBeenSet = 0x8FE612;
-inline constexpr uint32_t RoomStateCheck_BossIsDead = 0x8FE629;
 inline constexpr uint32_t UNUSED_RoomStateCheck_Morphball_8FE640 = 0x8FE640;
-inline constexpr uint32_t RoomStateCheck_MorphballAndMissiles = 0x8FE652;
-inline constexpr uint32_t RoomStateCheck_PowerBombs = 0x8FE669;
 inline constexpr uint32_t UNUSED_RoomStateCheck_SpeedBooster_8FE678 = 0x8FE678;
+inline constexpr uint32_t Use_StatePointer_inX = 0x8FE5E6;
+struct DoorScroll { uint16_t script; uint8_t screen, color; };
+inline constexpr DoorScroll door_scrolls[] = {
+    {0xB981, 6, 2},
+    {0xB98C, 0, 1},
+    {0xB9A2, 4, 0},
+    {0xB9A2, 8, 2},
+    {0xB9B3, 8, 0},
+    {0xB9B3, 9, 0},
+    {0xB9CA, 2, 0},
+    {0xB9CA, 3, 0},
+    {0xB9CA, 4, 0},
+    {0xB9CA, 5, 0},
+    {0xB9F1, 1, 2},
+    {0xB9F1, 4, 2},
+    {0xBA00, 2, 1},
+    {0xBA16, 4, 1},
+    {0xBA21, 6, 2},
+    {0xBA2C, 3, 2},
+    {0xBD16, 5, 1},
+    {0xBD16, 6, 1},
+    {0xBD30, 2, 2},
+    {0xBD30, 3, 2},
+    {0xBD3F, 0, 0},
+    {0xBD3F, 1, 2},
+    {0xBD6C, 4, 0},
+    {0xBD8A, 2, 1},
+    {0xBD95, 0, 2},
+    {0xBDA0, 6, 2},
+    {0xBDA0, 7, 2},
+    {0xBDAF, 1, 1},
+    {0xBDAF, 2, 0},
+    {0xBDC0, 1, 1},
+    {0xBDC0, 3, 0},
+    {0xBDD1, 0, 0},
+    {0xBDD1, 4, 1},
+    {0xBDE2, 2, 1},
+    {0xBDE2, 3, 1},
+    {0xBDF1, 0, 2},
+    {0xBDF1, 1, 2},
+    {0xBE00, 1, 2},
+    {0xBE1A, 6, 2},
+    {0xBE25, 0, 2},
+    {0xBE25, 1, 1},
+    {0xBE36, 2, 2},
+    {0xBF9E, 3, 0},
+    {0xBF9E, 4, 0},
+    {0xBF9E, 6, 1},
+    {0xBF9E, 7, 1},
+    {0xBF9E, 8, 1},
+    {0xBFBB, 1, 1},
+    {0xBFBB, 2, 1},
+    {0xBFBB, 3, 1},
+    {0xBFBB, 4, 2},
+    {0xBFBB, 6, 0},
+    {0xBFDA, 0, 1},
+    {0xBFDA, 1, 1},
+    {0xBFE9, 1, 0},
+    {0xBFE9, 0, 1},
+    {0xC016, 0, 2},
+    {0xC016, 2, 2},
+    {0xC025, 6, 1},
+    {0xC025, 7, 1},
+    {0xC025, 8, 0},
+    {0xC03A, 2, 0},
+    {0xC03A, 3, 1},
+    {0xC04B, 7, 2},
+    {0xC056, 1, 0},
+    {0xC056, 2, 1},
+    {0xC067, 3, 0},
+    {0xC067, 0, 1},
+    {0xC078, 1, 1},
+    {0xC078, 4, 0},
+    {0xC089, 0, 1},
+    {0xC089, 1, 0},
+    {0xC089, 2, 0},
+    {0xC089, 3, 0},
+    {0xC0A2, 0, 2},
+    {0xC0AD, 0, 1},
+    {0xC0AD, 1, 1},
+    {0xC0AD, 4, 0},
+    {0xC0C2, 0, 1},
+    {0xC0C2, 3, 0},
+    {0xC0D3, 0, 1},
+    {0xC0DE, 0, 1},
+    {0xC0DE, 1, 0},
+    {0xC0FA, 3, 0},
+    {0xC0FA, 2, 1},
+    {0xE1E8, 1, 1},
+    {0xE1F3, 0, 2},
+    {0xE1FE, 3, 0},
+    {0xE1FE, 4, 1},
+    {0xE229, 6, 0},
+    {0xE229, 7, 0},
+    {0xE229, 8, 0},
+    {0xE229, 9, 0},
+    {0xE345, 0, 0},
+    {0xE345, 4, 1},
+    {0xE356, 0, 0},
+    {0xE356, 1, 1},
+    {0xE367, 9, 0},
+    {0xE378, 0, 0},
+    {0xE378, 2, 0},
+    {0xE378, 1, 1},
+    {0xE38D, 1, 1},
+    {0xE398, 6, 1},
+    {0xE3A3, 4, 0},
+    {0xE3B9, 4, 0},
+    {0xE3B9, 7, 0},
+    {0xE3C8, 2, 0},
+    {0xE3C8, 1, 1},
+    {0xE3D9, 0, 2},
+    {0xE3D9, 2, 2},
+    {0xE4C0, 0, 2},
+    {0xE4C0, 1, 2},
+};
 }

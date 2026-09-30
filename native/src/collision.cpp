@@ -2,6 +2,18 @@
 #include "reference_index.hpp"
 
 namespace thor {
+size_t reaction_block(const Room& room, int x, int y) {
+    if (x < 0 || y < 0 || x >= room.width || y >= room.height) return room.blocks.size();
+    const int columns = room.width / 16;
+    int index = (y / 16) * columns + x / 16;
+    for (size_t hops = 0; hops < room.blocks.size(); ++hops) {
+        if (index < 0 || size_t(index) >= room.blocks.size()) return room.blocks.size();
+        const unsigned type = room.blocks[index] >> 12;
+        if ((type != 5 && type != 13) || !room.bts.at(index)) return size_t(index);
+        index += int(int8_t(room.bts[index])) * (type == 13 ? columns : 1);
+    }
+    return room.blocks.size();
+}
 bool room_solid_pixel(const Room& room, const Rom& rom, int x, int y) {
     if (x < 0 || y < 0 || x >= room.width || y >= room.height) return true;
     const int columns = room.width / 16;
