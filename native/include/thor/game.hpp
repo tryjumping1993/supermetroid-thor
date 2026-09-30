@@ -7,6 +7,7 @@
 #include "thor/wram.hpp"
 #include "ram_map.hpp"
 #include <cstdio>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -53,6 +54,10 @@ public:
     void queue_music(uint16_t id) { music_queue_.push_back(id); if (music_queue_.size() > 64) music_queue_.erase(music_queue_.begin()); }
     std::vector<uint16_t>& sound_queue() { return sound_queue_; }
     std::vector<uint16_t>& music_queue() { return music_queue_; }
+
+    // Cross-area hooks so independently ported areas need not link against each other.
+    // The PLM engine ($84) installs spawn_plm; block/projectile code calls it.
+    std::function<bool(Game&, uint16_t plm_id, uint16_t block_x, uint16_t block_y)> spawn_plm;
 
     // Global registration entry points; each species/PLM file adds its routines here.
     static void register_all(Game& game);
