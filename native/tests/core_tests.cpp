@@ -1,5 +1,6 @@
 #include "thor/save_game.hpp"
 #include "thor/enemies.hpp"
+#include "thor/game.hpp"
 #include "thor/clock.hpp"
 #include "thor/content.hpp"
 #include "thor/session.hpp"
@@ -279,6 +280,19 @@ void milestone2(const std::string& path) {
     require(!gameplay.statue_active() && (p.bosses[0] & 4) && !enemies.list()[0].active, "native Bomb Torizo wakes, takes real projectile damage and completes original death script");
     std::cout << "Milestone 2 focused smoke: stations / SRAM / Morph Ball / missile / pirates / Bomb Torizo" << std::endl;
 }
+void wram(const std::string& path) {
+    const auto rom = thor::Rom::from_file(path);
+    thor::Game game(rom);
+    game.Enemy_XPosition(0x40) = 0x1234;
+    require(game.word_at(0x0F7A + 0x40) == 0x1234, "Enemy.XPosition indexed by enemy offset");
+    game.Boyon_speedMultiplier(0x80) = 7;
+    require(game.word_at(0x0FA8 + 0x80) == 7, "species overlay shares enemy RAM");
+    require(thor::Game::Boyon_initialBounceSpeedTableIndex_address == 0x7800, "extra enemy variables live at $7E7800");
+    game.SamusXPosition() = 0xFFFE; game.SamusXPosition() += 3;
+    require(game.SamusXPosition() == 1, "16-bit proxy wraps like the accumulator");
+    game.long_at(0x100) = 0xABCDEF;
+    require(game.byte_at(0x101) == 0xCD, "long access is little-endian");
+}
 void doors(const std::string& path) {
     thor::Session session(thor::Rom::from_file(path));
     const auto landing = session.room().doors;
@@ -365,6 +379,7 @@ int main(int argc, char** argv) {
     try {
         decompression(); clocks(); saves();
         if (argc > 1) {
+            wram(argv[1]);
             if (argc > 3 && std::string(argv[2]) == "--route") route(argv[1], argv[3]);
             else if (argc > 2 && std::string(argv[2]) == "--milestone2") { gameplay(argv[1]); milestone2(argv[1]); }
             else if (argc > 2 && std::string(argv[2]) == "--gameplay") gameplay(argv[1]);
