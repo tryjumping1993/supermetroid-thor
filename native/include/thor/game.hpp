@@ -27,13 +27,15 @@ using EnemyInstruction = InstructionResult (*)(Game& g, uint16_t x, uint16_t y);
 
 class Game : public WramNames {
 public:
-    explicit Game(const Rom& rom) : rom_(rom) {}
-    const Rom& rom() const { return rom_; }
+    explicit Game(const Rom& rom) : rom_(&rom) {}
+    const Rom& rom() const { return *rom_; }
+    // Owners that copy/move the Rom (Session) must re-point the game at the new Rom object.
+    void rebind(const Rom& rom) { rom_ = &rom; }
     // ROM reads by 24-bit address (LoROM). Bank-relative helper for pointers in a bank.
-    uint8_t rom_b(uint32_t address) const { return rom_.byte(address); }
-    uint16_t rom_w(uint32_t address) const { return rom_.word(address); }
-    uint32_t rom_l(uint32_t address) const { return rom_.pointer(address); }
-    uint16_t rom_w(uint8_t bank, uint16_t address) const { return rom_.word((uint32_t(bank) << 16) | address); }
+    uint8_t rom_b(uint32_t address) const { return rom_->byte(address); }
+    uint16_t rom_w(uint32_t address) const { return rom_->word(address); }
+    uint32_t rom_l(uint32_t address) const { return rom_->pointer(address); }
+    uint16_t rom_w(uint8_t bank, uint16_t address) const { return rom_->word((uint32_t(bank) << 16) | address); }
 
     // Registries. Missing entries are reported once and treated as no-ops so an unported
     // routine degrades gracefully instead of crashing the game.
@@ -49,6 +51,9 @@ public:
     // room's blocks, redrawing changed blocks. Both are cheap enough to call every tick.
     void sync_level_from_room(const Room& room);
     bool sync_level_to_room(Room& room);
+    bool has_function(uint32_t address) const { return functions_.count(canonical(address)) != 0; }
+    // Clears WRAM but keeps the registries (used when a room is (re)loaded).
+    void reset_wram() { clear(); enemies_drawn.clear(); }
 
     // 65816 register stand-ins for routines that take/return A (e.g. Instruction_..._WithA).
     uint16_t A = 0;
@@ -73,7 +78,7 @@ public:
     static void register_all(Game& game);
 private:
     void note_missing(uint32_t address);
-    const Rom& rom_;
+    const Rom* rom_;
     std::unordered_map<uint32_t, EnemyFunction> functions_;
     std::unordered_map<uint32_t, EnemyInstruction> instructions_;
     std::unordered_set<uint32_t> missing_;

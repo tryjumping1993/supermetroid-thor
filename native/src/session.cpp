@@ -1,19 +1,26 @@
 #include "thor/session.hpp"
 #include "reference_index.hpp"
 #include "thor/save_game.hpp"
+#include "thor/enemy_engine.hpp"
+#include "thor/enemy_projectiles.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
 namespace thor {
 namespace { constexpr int32_t pixel = 65536; }
-Session::Session(Rom rom) : rom_(std::move(rom)) { new_game(); }
+Session::Session(Rom rom) : rom_(std::move(rom)), game_(rom_) { Game::register_all(game_); new_game(); }
+Session::Session(const Session& other) = default;
+Session::Session(Session&& other) noexcept = default;
+Session& Session::operator=(const Session& other) = default;
+Session& Session::operator=(Session&& other) noexcept = default;
+
 void Session::place_station(const LoadStation& station) {
     auto context = progression_; context.entering_door = station.door;
     auto next = load_room(rom_, station.room_index, context);
     const auto generation = state_.generation + 1;
     room_ = std::move(next); room_index_ = station.room_index; progression_ = context;
-    gameplay_.load(room_, rom_, progression_); enemies_.load(room_, rom_, progression_);
+    load_actors();
     if (!room_.enemy_quota && room_.header != 0x8F9804) gameplay_.release_grey(room_, rom_);
     transition_ = {}; animation_ = {}; elevator_ = {};
     state_ = {}; state_.generation = generation; state_.pose = 1;
@@ -48,12 +55,127 @@ void Session::save_game(Sram& sram, unsigned slot) {
     progression_.health = progression_.max_health; progression_.missiles = progression_.max_missiles;
     save_progression(rom_, sram, slot, progression_, unsigned(room_.area), unsigned(station));
 }
+namespace {
+// Enemies still driven by the M2 hand-written `Enemies` class (pirates, Bomb Torizo, elevator, ship).
+bool legacy_enemy(uint16_t id) {
+    using namespace reference;
+    const uint16_t low = id;
+    return low == (EnemyHeaders_BombTorizo & 0xFFFF) || low == (EnemyHeaders_PirateGreyWalking & 0xFFFF) ||
+        low == (EnemyHeaders_PirateGreyWall & 0xFFFF) || low == (EnemyHeaders_Elevator & 0xFFFF) ||
+        low == (EnemyHeaders_ShipTop & 0xFFFF) || low == (EnemyHeaders_ShipBottomEntrance & 0xFFFF);
+}
+}
+void Session::load_actors() {
+    game_.rebind(rom_);
+    gameplay_.load(room_, rom_, progression_); enemies_.load(room_, rom_, progression_);
+    const uint16_t seed = game_.RandomNumberSeed();
+    game_.reset_wram();
+    game_.RandomNumberSeed() = seed;
+    game_.EnemyPopulationPointer() = rom_.word(room_.state + 8);
+    game_.EnemySetPointer() = rom_.word(room_.state + 10);
+    game_.sync_level_from_room(room_);
+    game_.EnemyIndexToShake() = 0xFFFF;
+    game_.EnemyProjectile_Enable() = 0x8000;
+    for (uint16_t slot = 0; slot < 0x24; slot += 2) game_.word_at(Game::EnemyProjectileData_KilledEnemyIndex_address + slot) = 0xFFFF;
+    sync_game_in();
+    enemy::Load_Enemies(game_);
+    enemy::Initialise_Enemies(game_);
+    // Only species with a ported main AI run here; the rest stay absent (as in the M2 slice).
+    for (uint16_t x = 0; x < 0x800; x = uint16_t(x + 0x40)) {
+        const uint16_t id = game_.Enemy_ID(x);
+        if (!id) continue;
+        const uint32_t header = 0xA00000u | id;
+        const uint32_t main_ai = (uint32_t(rom_.byte(header + 0x0C)) << 16) | rom_.word(header + 0x18);
+        if (legacy_enemy(id) || !game_.has_function(main_ai)) game_.Enemy_ID(x) = 0;
+    }
+    enemy::Determine_Which_Enemies_to_Process(game_);
+    for (size_t i = 0; i < previous_enemy_.size(); ++i)
+        previous_enemy_[i] = {int32_t(game_.Enemy_XPosition(uint16_t(i * 0x40))) * pixel, int32_t(game_.Enemy_YPosition(uint16_t(i * 0x40))) * pixel};
+}
+void Session::sync_game_in() {
+    auto& g = game_;
+    g.SamusXPosition() = uint16_t(state_.x >> 16); g.SamusXSubPosition() = uint16_t(state_.x & 0xFFFF);
+    g.SamusYPosition() = uint16_t(state_.y >> 16); g.SamusYSubPosition() = uint16_t(state_.y & 0xFFFF);
+    g.SamusXRadius() = 5; g.SamusYRadius() = pose_radius(rom_, state_.pose);
+    g.Layer1XPosition() = uint16_t(int(state_.camera_x)); g.Layer1YPosition() = uint16_t(int(state_.camera_y));
+    g.Energy() = progression_.health; g.MaxEnergy() = progression_.max_health;
+    g.ReserveEnergy() = progression_.reserve_health; g.MaxReserveEnergy() = progression_.max_reserve_health;
+    g.Missiles() = progression_.missiles; g.MaxMissiles() = progression_.max_missiles;
+    g.SuperMissiles() = progression_.super_missiles; g.MaxSuperMissiles() = progression_.max_super_missiles;
+    g.PowerBombs() = progression_.power_bombs; g.MaxPowerBombs() = progression_.max_power_bombs;
+    g.EquippedItems() = progression_.equipped_items; g.CollectedItems() = progression_.collected_items;
+    g.SamusInvincibilityTimer() = state_.invulnerable;
+    g.AreaIndex() = uint16_t(room_.area);
+    g.TimeIsFrozenFlag() = 0; g.ContactDamageIndex() = 0;
+    // Samus projectiles: slots 0-4 beams/missiles, 5-9 bombs, in the original layout.
+    unsigned shots = 0, bombs = 0;
+    for (uint16_t slot = 0; slot < 10; ++slot) {
+        g.SamusProjectile_Types(uint16_t(slot * 2)) = 0; g.SamusProjectile_Damages(uint16_t(slot * 2)) = 0;
+        g.SamusProjectile_XPositions(uint16_t(slot * 2)) = 0; g.SamusProjectile_YPositions(uint16_t(slot * 2)) = 0;
+        g.SamusProjectile_Directions(uint16_t(slot * 2)) = 0;
+    }
+    uint16_t bomb_slot = 5;
+    for (const auto& beam : gameplay_.beams()) {
+        if (!beam.active) continue;
+        const bool bomb = beam.weapon == 2;
+        const uint16_t slot = bomb ? bomb_slot++ : uint16_t(shots);
+        if (bomb) { ++bombs; } else { ++shots; }
+        const uint16_t y = uint16_t(slot * 2);
+        g.SamusProjectile_Types(y) = bomb ? 0x0500 : beam.weapon == 1 ? 0x8100 : 0x8000;   // bit 15 = Samus-owned
+        g.SamusProjectile_Damages(y) = beam.damage;
+        g.SamusProjectile_XPositions(y) = uint16_t(beam.x >> 16); g.SamusProjectile_YPositions(y) = uint16_t(beam.y >> 16);
+        g.SamusProjectile_XRadii(y) = beam.radius_x; g.SamusProjectile_YRadii(y) = beam.radius_y;
+        g.SamusProjectile_Directions(y) = beam.direction;
+        if (bomb) {
+            const unsigned reset = rom_.word(reference::BombTimerResetValue);
+            g.word_at(Game::SamusProjectile_BombTimers_address + (slot - 5) * 2) = uint16_t(beam.age < reset ? reset - beam.age : 0);
+        }
+    }
+    g.SamusProjectile_ProjectileCounter() = uint16_t(shots); g.SamusProjectile_BombCounter() = uint16_t(bombs);
+}
+void Session::sync_game_out() {
+    auto& g = game_;
+    const uint16_t before = progression_.health;
+    progression_.health = g.Energy(); progression_.reserve_health = g.ReserveEnergy();
+    progression_.missiles = g.Missiles(); progression_.super_missiles = g.SuperMissiles(); progression_.power_bombs = g.PowerBombs();
+    state_.invulnerable = g.SamusInvincibilityTimer();
+    if (progression_.health < before) {
+        state_.vy = -3 * pixel; state_.dead = !progression_.health;
+        state_.vx = g.KnockbackXDirection() ? 2 * pixel : -2 * pixel;
+    }
+    // Shots consumed by enemies.
+    unsigned shots = 0, bomb = 5;
+    for (auto& beam : gameplay_.beams()) {
+        if (!beam.active) continue;
+        const bool is_bomb = beam.weapon == 2;
+        const uint16_t slot = is_bomb ? uint16_t(bomb++) : uint16_t(shots++);
+        if (!is_bomb && (g.SamusProjectile_Directions(uint16_t(slot * 2)) & 0x0010)) beam.active = false;
+    }
+    game_.sync_level_to_room(room_);
+}
+void Session::run_enemy_engine() {
+    auto& g = game_;
+    for (size_t i = 0; i < previous_enemy_.size(); ++i)
+        previous_enemy_[i] = {int32_t(g.Enemy_XPosition(uint16_t(i * 0x40))) * pixel + g.Enemy_XSubPosition(uint16_t(i * 0x40)),
+            int32_t(g.Enemy_YPosition(uint16_t(i * 0x40))) * pixel + g.Enemy_YSubPosition(uint16_t(i * 0x40))};
+    g.sync_level_from_room(room_);
+    sync_game_in();
+    g.Layer1XPosition() = uint16_t(int(state_.camera_x)); g.Layer1YPosition() = uint16_t(int(state_.camera_y));
+    enemy::Determine_Which_Enemies_to_Process(g);
+    enemy::Samus_Projectiles_Interaction_Handling(g);
+    enemy::Main_Enemy_Routine(g);
+    enemy::Enemy_Projectile_Handler(g);
+    enemy::EnemyProjectile_Samus_Collision_Handling(g);
+    enemy::Projectile_vs_Projectile_Collision_Handling(g);
+    enemy::DecrementSamusHurtTimers_ClearActiveEnemyIndicesLists(g);
+    sync_game_out();
+}
 void Session::select_room(size_t index) {
     auto context = progression_; context.entering_door = 0;
     auto next = load_room(rom_, index, context); // Complete decode before replacing current session.
     const auto generation = state_.generation + 1;
     room_ = std::move(next); room_index_ = index; progression_ = context;
-    gameplay_.load(room_, rom_, progression_); enemies_.load(room_, rom_, progression_);
+    load_actors();
     if (!room_.enemy_quota && room_.header != 0x8F9804) gameplay_.release_grey(room_, rom_);
     transition_ = {}; animation_ = {}; elevator_ = {};
     state_ = {}; state_.generation = generation; state_.pose = 1;
@@ -130,7 +252,7 @@ void Session::traverse_door(size_t expected_room, size_t door_index) {
     arrived.camera_y = std::clamp(float(door.screen_y * 256), 0.f, float(std::max(0, next.height - 224)));
     // Commit only after destination decoding and spawn validation succeed.
     room_ = std::move(next); room_index_ = door.destination_index; progression_ = context;
-    gameplay_.load(room_, rom_, progression_); enemies_.load(room_, rom_, progression_);
+    load_actors();
     if (!room_.enemy_quota && room_.header != 0x8F9804) gameplay_.release_grey(room_, rom_);
     transition_ = {}; animation_ = {}; elevator_ = {};
     previous_ = state_ = arrived; buttons_ = previous_buttons_ = 0; clock_.reset();
@@ -257,7 +379,7 @@ void Session::door_tick() {
         state_.x = ((state_.x / pixel & 255) * pixel) + int32_t(state_.camera_x * pixel);
         state_.y = ((state_.y / pixel & 255) * pixel) + int32_t(state_.camera_y * pixel);
         room_ = std::move(next); room_index_ = t.door.destination_index; progression_ = context;
-        ++state_.generation; state_.transition = t.phase = 2; explored_.clear(); gameplay_.load(room_, rom_, progression_); enemies_.load(room_, rom_, progression_);
+        ++state_.generation; state_.transition = t.phase = 2; explored_.clear(); load_actors();
     if (!room_.enemy_quota && room_.header != 0x8F9804) gameplay_.release_grey(room_, rom_);
         return;
     }
@@ -328,6 +450,7 @@ bool Session::elevator_tick(uint16_t pressed) {
     return true;
 }
 void Session::step(uint16_t buttons) {
+    game_.rebind(rom_);
     if (state_.paused) { previous_ = state_; previous_buttons_ = buttons; return; }
     previous_ = state_; ++state_.tick;
     const uint16_t pressed = buttons & ~previous_buttons_;
@@ -338,7 +461,6 @@ void Session::step(uint16_t buttons) {
     }
     if (state_.dead) return;
     if (elevator_tick(pressed)) { camera(); return; }
-    if (state_.invulnerable) --state_.invulnerable;
     if ((pressed & Select) && progression_.max_missiles) state_.missile_selected = !state_.missile_selected;
     gameplay_.tick(room_, rom_, state_.camera_x, state_.camera_y);
     const bool was_grounded = state_.grounded;
@@ -419,6 +541,7 @@ void Session::step(uint16_t buttons) {
         progression_.health = uint16_t(std::max(0, int(progression_.health) - damage));
         state_.invulnerable = 96; state_.vy = -3 * pixel; state_.dead = !progression_.health;
     }
+    run_enemy_engine();
     camera();
 }
 void Session::advance(uint64_t timestamp) { clock_.advance(timestamp, [&] { step(buttons_); }); }
@@ -435,6 +558,20 @@ RenderSnapshot Session::snapshot(bool interpolate) const {
     for (const auto& enemy : enemies_.list()) if (enemy.active && enemy.visible && !enemy.sleeping && enemy.map)
         result.enemies.push_back({blend(enemy.previous_x, enemy.x) / pixel, blend(enemy.previous_y, enemy.y) / pixel,
             enemy.map, enemy.kind, enemy.behavior, bool(enemy.flash && state_.tick & 2)});
+    for (const uint16_t x : game_.enemies_drawn) {
+        if (!game_.Enemy_ID(x) || !game_.Enemy_spritemap(x)) continue;
+        const auto& before = previous_enemy_[x / 0x40];
+        const int64_t cx = int64_t(game_.Enemy_XPosition(x)) * pixel + game_.Enemy_XSubPosition(x);
+        const int64_t cy = int64_t(game_.Enemy_YPosition(x)) * pixel + game_.Enemy_YSubPosition(x);
+        EnemySnapshot e{};
+        e.x = blend(before[0], double(cx)) / pixel; e.y = blend(before[1], double(cy)) / pixel;
+        e.map = (uint32_t(uint8_t(game_.Enemy_bank(x))) << 16) | game_.Enemy_spritemap(x);
+        e.kind = game_.Enemy_ID(x); e.ported = true; e.extended = (game_.Enemy_properties2(x) & 4) != 0;
+        e.gfx_offset = game_.Enemy_GFXOffset(x); e.palette = game_.Enemy_palette(x);
+        e.frozen = game_.Enemy_freezeTimer(x) != 0;
+        e.flash = game_.Enemy_flashTimer(x) && (state_.tick & 2);
+        result.enemies.push_back(e);
+    }
     if (elevator_.active) for (auto& enemy : result.enemies) if (enemy.kind == (reference::EnemyHeaders_Elevator & 0xFFFF)) {
         enemy.x = result.x; enemy.y = result.y + 26;
     }

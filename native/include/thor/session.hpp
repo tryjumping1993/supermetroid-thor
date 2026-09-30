@@ -3,8 +3,10 @@
 #include "thor/content.hpp"
 #include "thor/gameplay.hpp"
 #include "thor/enemies.hpp"
+#include "thor/game.hpp"
 #include "thor/samus.hpp"
 #include "thor/sram.hpp"
+#include <array>
 #include <memory>
 #include <set>
 
@@ -22,7 +24,10 @@ struct State {
     uint8_t transition = 0;
 };
 struct BeamSnapshot { float x = 0, y = 0; uint8_t direction = 2, weapon = 0; uint16_t age = 0; };
-struct EnemySnapshot { float x, y; uint32_t map; uint16_t kind, behavior; bool flash; };
+// `map` is the 24-bit spritemap address. Ported (WRAM-driven) enemies also carry their tile slot,
+// palette bits and whether the spritemap is the extended format.
+struct EnemySnapshot { float x, y; uint32_t map; uint16_t kind, behavior; bool flash;
+    bool ported = false, extended = false; uint16_t gfx_offset = 0, palette = 0; bool frozen = false; };
 struct EnemyShotSnapshot { float x, y; uint32_t map; };
 struct RenderSnapshot {
     float x = 0, y = 0, camera_x = 0, camera_y = 0;
@@ -39,6 +44,10 @@ struct RenderSnapshot {
 class Session {
 public:
     explicit Session(Rom rom);
+    Session(const Session& other);
+    Session& operator=(const Session& other);
+    Session(Session&& other) noexcept;
+    Session& operator=(Session&& other) noexcept;
     void new_game();
     void load_game(const Sram& sram, unsigned slot);
     void save_game(Sram& sram, unsigned slot);
@@ -61,6 +70,7 @@ public:
     const RoomGameplay& gameplay() const { return gameplay_; }
     const std::set<int>& explored() const { return explored_; }
     const Enemies& enemies() const { return enemies_; }
+    const Game& game() const { return game_; }
     const Progression& progression() const { return progression_; }
     double alpha() const { return clock_.alpha(); }
 private:
@@ -73,6 +83,10 @@ private:
     void begin_door(size_t index);
     void door_tick();
     void place_station(const LoadStation& station);
+    void load_actors();                 // gameplay objects, legacy enemies and the ported enemy engine
+    void sync_game_in();                // Session state -> WRAM
+    void sync_game_out();               // WRAM -> Session state
+    void run_enemy_engine();
     struct Transition { Door door; unsigned phase = 0, timer = 0, scroll = 0; float source_x = 0, source_y = 0; } transition_;
     struct Elevator { bool active = false, arriving = false; int direction = 0, x = 0; int32_t y = 0, target = 0; } elevator_;
     bool elevator_tick(uint16_t pressed);
@@ -82,6 +96,8 @@ private:
     Room room_;
     RoomGameplay gameplay_;
     Enemies enemies_;
+    mutable Game game_;   // accessors are non-const proxies; the snapshot only reads
+    std::array<std::array<int32_t, 2>, 32> previous_enemy_;
     size_t room_index_ = 0;
     State previous_, state_;
     TickClock clock_;

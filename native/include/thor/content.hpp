@@ -13,6 +13,7 @@ struct Progression {
     uint16_t collected_items = 0, max_missiles = 0, max_power_bombs = 0;
     uint16_t entering_door = 0;
     uint16_t equipped_items = 0, health = 99, max_health = 99, missiles = 0;
+    uint16_t super_missiles = 0, max_super_missiles = 0, power_bombs = 0, reserve_health = 0, max_reserve_health = 0;
     std::bitset<512> items, opened_doors, destroyed_chozo;
     std::array<uint8_t, 8 * 256> map{};
 };
