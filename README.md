@@ -1,4 +1,16 @@
-# Super Metroid
+# Super Metroid Thor
+
+The native AYN Thor rewrite is under `native/` and `android/`. A development APK now runs decoded room artwork, provisional native movement, ROM-defined development room traversal, widescreen rendering, stable interpolation and a bottom-screen companion.
+
+**The full-game port is incomplete.** Enemies/bosses, authentic movement and room scripts, progression, audio and gameplay save restoration are still pending. The current build is a development room viewer/movement slice.
+
+- [Build, controls and architecture](docs/NATIVE_PORT.md)
+- [Verification results and remaining implementation gates](docs/IMPLEMENTATION_STATUS.md)
+- [Third-party reference attribution](docs/THIRD_PARTY.md)
+
+The Android APK imports an original NTSC ROM through the document picker and contains no ROM-derived assets. The pinned InsaneFirebat disassembly is a separate reference submodule. Its verified rebuild supplies the address index used by native content decoding.
+
+## Legacy SNES disassembly
 
 This project is a disassembly of Super Metroid for the Super Famicom (SNES).
 

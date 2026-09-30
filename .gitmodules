@@ -1,0 +1,3 @@
+[submodule "reference/sm-disassembly"]
+	path = reference/sm-disassembly
+	url = https://github.com/InsaneFirebat/sm_disassembly.git

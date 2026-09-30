@@ -5,3 +5,16 @@
 # For nmake-based builds on Windows:
 /src/*.o
 /src/*.o.d
+
+# Native port: private ROMs, saves, device captures and generated build output.
+*.sfc
+*.smc
+*.srm
+/android/.gradle/
+/android/.kotlin/
+/android/local.properties
+/android/app/build/
+/android/app/.cxx/
+/android/build/
+/native/build/
+__pycache__/
