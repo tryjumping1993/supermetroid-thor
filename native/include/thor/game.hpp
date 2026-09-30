@@ -37,8 +37,9 @@ public:
 
     // Registries. Missing entries are reported once and treated as no-ops so an unported
     // routine degrades gracefully instead of crashing the game.
-    void add_function(uint32_t address, EnemyFunction fn) { functions_[address] = fn; }
-    void add_instruction(uint32_t address, EnemyInstruction fn) { instructions_[address] = fn; }
+    static uint32_t canonical(uint32_t address);
+    void add_function(uint32_t address, EnemyFunction fn) { functions_[canonical(address)] = fn; }
+    void add_instruction(uint32_t address, EnemyInstruction fn) { instructions_[canonical(address)] = fn; }
     bool call_function(uint32_t address, uint16_t x);
     bool call_instruction(uint32_t address, uint16_t x, uint16_t& y, bool& stop);
     const std::unordered_set<uint32_t>& missing() const { return missing_; }
@@ -49,6 +50,11 @@ public:
     void sync_level_from_room(const Room& room);
     bool sync_level_to_room(Room& room);
 
+    // 65816 register stand-ins for routines that take/return A (e.g. Instruction_..._WithA).
+    uint16_t A = 0;
+    // Enemies whose graphics were queued this frame (the original's drawing queues).
+    std::vector<uint16_t> enemies_drawn;
+
     // Audio hooks (no-ops until the SPC/S-DSP backend lands). IDs are the original queue values.
     void queue_sound(uint16_t id) { sound_queue_.push_back(id); if (sound_queue_.size() > 256) sound_queue_.erase(sound_queue_.begin()); }
     void queue_music(uint16_t id) { music_queue_.push_back(id); if (music_queue_.size() > 64) music_queue_.erase(music_queue_.begin()); }
@@ -58,6 +64,10 @@ public:
     // Cross-area hooks so independently ported areas need not link against each other.
     // The PLM engine ($84) installs spawn_plm; block/projectile code calls it.
     std::function<bool(Game&, uint16_t plm_id, uint16_t block_x, uint16_t block_y)> spawn_plm;
+
+    // Hooks for services implemented by other ported areas (Samus commands, the $86 projectile engine).
+    std::function<void(Game&, uint16_t command)> samus_command;                       // $90:... Run_Samus_Command
+    std::function<void(Game&, uint16_t projectile_id, uint16_t parameter)> spawn_enemy_projectile;  // $86:8027
 
     // Global registration entry points; each species/PLM file adds its routines here.
     static void register_all(Game& game);

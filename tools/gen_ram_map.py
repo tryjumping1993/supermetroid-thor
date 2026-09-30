@@ -144,7 +144,9 @@ def main():
         elif size == 3:
             lines.append(f"    Long {name}(uint32_t x = 0) {{ return long_at(0x{offset:05X} + x); }}")
         else:
-            lines.append(f"    uint8_t* {name}(uint32_t x = 0) {{ return bytes_at(0x{offset:05X} + x); }}")
+            # Arrays: word access by default (indexed by the 65816 byte offset); raw bytes via Name_bytes().
+            lines.append(f"    Word {name}(uint32_t x = 0) {{ return word_at(0x{offset:05X} + x); }}")
+            lines.append(f"    uint8_t* {name}_bytes(uint32_t x = 0) {{ return bytes_at(0x{offset:05X} + x); }}")
         lines.append(f"    static constexpr uint32_t {name}_address = 0x{offset:05X};")
     lines += ["};", "}", ""]
     OUTPUT.write_text("\n".join(lines), encoding="utf-8")

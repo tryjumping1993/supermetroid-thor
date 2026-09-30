@@ -3,17 +3,24 @@
 #include <cstring>
 
 namespace thor {
+// The enemy code banks ($A0-$B3) each carry identical copies of the common routines at
+// $8000-$8186; they resolve to the single $A0 implementation.
+uint32_t Game::canonical(uint32_t address) {
+    const uint32_t bank = address >> 16, offset = address & 0xFFFF;
+    if (bank >= 0xA0 && bank <= 0xB3 && offset >= 0x8000 && offset < 0x8187) return 0xA00000u | offset;
+    return address;
+}
 void Game::note_missing(uint32_t address) {
     if (missing_.insert(address).second && std::getenv("THOR_LOG_MISSING"))
         std::fprintf(stderr, "unported routine $%06X\n", address);
 }
 bool Game::call_function(uint32_t address, uint16_t x) {
-    const auto it = functions_.find(address);
+    const auto it = functions_.find(canonical(address));
     if (it == functions_.end()) { note_missing(address); return false; }
     it->second(*this, x); return true;
 }
 bool Game::call_instruction(uint32_t address, uint16_t x, uint16_t& y, bool& stop) {
-    const auto it = instructions_.find(address);
+    const auto it = instructions_.find(canonical(address));
     if (it == instructions_.end()) { note_missing(address); stop = false; return false; }
     const auto result = it->second(*this, x, y);
     y = result.y; stop = result.stop; return true;
