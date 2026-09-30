@@ -74,6 +74,7 @@ public:
     const Enemies& enemies() const { return enemies_; }
     Game& game() const { return game_; }   // WRAM accessors are proxies; callers must not mutate
     const Progression& progression() const { return progression_; }
+    Progression& progression_for_tests() { return progression_; }
     double alpha() const { return clock_.alpha(); }
 private:
     bool solid(int x, int y) const;
